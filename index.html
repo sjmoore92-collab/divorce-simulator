@@ -24,6 +24,14 @@
   #stamp.show span{animation:slam .45s cubic-bezier(.2,2.4,.4,1) forwards}
   @keyframes slam{to{transform:rotate(-14deg) scale(1);opacity:1}}
   .hidden{display:none!important}
+  #court{background:rgba(20,16,12,.94)}
+  #court h1{color:#e8d5a3}
+  .copt{pointer-events:auto;cursor:pointer;display:block;width:100%;max-width:560px;margin:7px auto;background:#2c2620;border:2px solid #6b5b45;color:#f0e6d2;font-size:clamp(13px,2.5vw,15.5px);line-height:1.35;text-align:left;padding:11px 14px;border-radius:10px;transition:transform .06s,border-color .12s}
+  .copt:active{transform:scale(.985)}
+  .copt.good{border-color:#7ac74f;background:#26331f}
+  .copt.bad{border-color:#e63946;background:#3a2226}
+  #courtClaim{background:#1d1a16;border-left:4px solid #8b6f47;padding:10px 14px;border-radius:8px;max-width:560px;font-style:italic}
+  #courtMeter{font-family:ui-monospace,Menlo,monospace;color:#e8d5a3;font-weight:700}
   #hint{bottom:14px;left:0;right:0;text-align:center;font-size:12.5px;color:#aab;opacity:.9}
   kbd{background:#333a46;border-radius:4px;padding:1px 6px;font-family:inherit}
 </style>
@@ -39,7 +47,8 @@
   <h2>"You can't divorce what you can't catch." — Brad, Kyle, Chet, and seven others</h2>
   <p>You are <b>Gary</b>, freelance process server, 4.9 stars. Ten spouses filed. Ten bros ran.
      Between you and a clean caseload stand a lawyer on retainer, a seagull with no respect
-     for the law, and one extremely protective mother.</p>
+     for the law, and one extremely protective mother. And when the papers land, your job's
+     not done — you argue the case in <b>DIVORCE COURT</b>, against Brett, every time, somehow.</p>
   <p><kbd>WASD</kbd>/<kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <b>click / tap</b> throws papers &nbsp;·&nbsp; walk over dropped papers to reclaim them &nbsp;·&nbsp; walk into your man to hand-serve</p>
   <button class="btn" id="startBtn">TAKE THE CASE</button>
   <button class="btn alt hidden" id="contBtn"></button>
@@ -51,6 +60,17 @@
   <p id="interGrounds" style="color:#9fb4c7;font-style:italic;font-size:clamp(12.5px,2.3vw,15px)"></p>
   <p id="interNarc" style="font-family:ui-monospace,Menlo,monospace;color:#ff9770;font-weight:700;letter-spacing:1px"></p>
   <button class="btn" id="interBtn">SERVE HIM</button>
+</div>
+
+<div class="overlay hidden" id="court">
+  <h2 id="courtHead">⚖️ DIVORCE COURT — HON. JUDGE P. HARDAWAY</h2>
+  <h1 id="courtTitle"></h1>
+  <p id="courtBrett" style="color:#c9a94f;font-weight:700;margin-bottom:2px"></p>
+  <p id="courtClaim"></p>
+  <div id="courtOpts" style="width:100%"></div>
+  <p id="courtMeter"></p>
+  <p id="courtVerdict" class="hidden" style="color:#ffd166;font-weight:700;max-width:560px"></p>
+  <button class="btn hidden" id="courtNext">NEXT CASE</button>
 </div>
 
 <div class="overlay hidden" id="fail">
@@ -167,8 +187,115 @@ const LEVELS=[
 ];
 const WALKWAYS=[[.12,.235,.31,.085,1],[.57,.43,.31,.085,-1],[.27,.665,.31,.085,1]];
 
+/* ---------- courtroom phase: 2 exchanges per case, Brett defends everyone ----------
+ opts: exactly one {w:1} winning rebuttal (evidence beats outbursts) */
+const COURT=[
+ {claims:[
+  {q:"Your Honor, my client's lawn devotion is a LOVE LANGUAGE. The marriage simply couldn't compete with zoysia grass.",
+   opts:[{t:"Counsel, your client publicly named the riding mower 'the other woman.' We have 42 weekends of documentation and one very smug mower.",w:1},
+         {t:"Objection! Grass is stupid!"},
+         {t:"My client also loves lawns. Wait. Strike that."}]},
+  {q:"The hydrangeas REQUIRED him. They're emotional-support hydrangeas — it's basically medical.",
+   opts:[{t:"A botanist testified, Your Honor: they're perennials. They literally thrive on neglect.",w:1},
+         {t:"Flowers can't be medicine, that's why I eat them."},
+         {t:"OBJECTION: hydrangeas ARE gorgeous. ...Withdrawn."}]}],
+  asset:"The riding mower — awarded to your client. It never loved him back.",},
+ {claims:[
+  {q:"Cart abandonment is not recognized as grounds. My client is a FREE SPIRIT of the parking lot.",
+   opts:[{t:"Exhibit A: 340 carts, geotagged. One is still rolling, Your Honor. It has a family now.",w:1},
+         {t:"Carts are society's mirror!"},
+         {t:"I too abandon things. Cases, mostly."}]},
+  {q:"'My current wife' is a term of ENDEARMENT. Forward-looking. Optimistic, even.",
+   opts:[{t:"It's on the anniversary card, counsel. In calligraphy. He hired a calligrapher.",w:1},
+         {t:"Marriage is a construct anyway!"},
+         {t:"'Current' implies voltage. Is your client electricity?"}]}],
+  asset:"Full custody of the self-checkout discount card.",},
+ {claims:[
+  {q:"Leg day is SACRED. The gym absences were, in every sense, religious observance.",
+   opts:[{t:"He renamed the garage 'The Chapel' and missed a funeral for arm day, Your Honor. The same arm, three events.",w:1},
+         {t:"I lift too! (I don't.)"},
+         {t:"Objection: legs. That's it. That's the objection."}]},
+  {q:"My client's mirrors are LOAD-BEARING for his self-esteem. Removal would be structural.",
+   opts:[{t:"Structural mirrors aren't in the building code, counsel. We checked. So did the inspector. He laughed.",w:1},
+         {t:"Mirrors steal souls!"},
+         {t:"My self-esteem is also load-bearing, honestly."}]}],
+  asset:"'The Chapel' — deconsecrated, returned to being a garage.",},
+ {claims:[
+  {q:"Eleven thousand dollars of honey is an INVESTMENT. Honey never expires. Checkmate, economics.",
+   opts:[{t:"It expires when you store it in a kiddie pool, Your Honor. Exhibit B: the pool. Exhibit C: the bees' one-star review.",w:1},
+         {t:"Money is fake! Bees are real!"},
+         {t:"I'd also like some honey. For the court."}]},
+  {q:"My client IS the face of the farmers market. That is community service.",
+   opts:[{t:"The market's actual face is a turnip mascot named Gerald, counsel. We deposed Gerald. It went great.",w:1},
+         {t:"Farmers markets are a SCAM!"},
+         {t:"His face IS symmetrical... objection withdrawn."}]}],
+  asset:"The bucket hat — to be burned ceremonially at the market. Gerald will officiate.",},
+ {claims:[
+  {q:"Chad Appreciation Day boosts OFFICE MORALE. HR approved it. Chad is HR.",
+   opts:[{t:"'Chad is HR' is our Exhibit D, Your Honor. The complaint box is a shredder with googly eyes.",w:1},
+         {t:"I appreciate NOTHING!"},
+         {t:"Morale does sound nice..."}]},
+  {q:"Scheduling it on their anniversary was COINCIDENCE. There are only 365 days.",
+   opts:[{t:"He booked it three years out, recurring, counsel. The invite says 'better than our thing — C.'",w:1},
+         {t:"Coincidences aren't real! Wake up!"},
+         {t:"365 IS very few days, in fairness."}]}],
+  asset:"The Chad Appreciation Day budget — reallocated to literally anything else.",},
+ {claims:[
+  {q:"Referring to the marriage as 'a merger' is ROMANTIC in certain tax brackets.",
+   opts:[{t:"He filed the honeymoon as a business trip, Your Honor. The expense report says 'synergy retreat, 2 attendees.'",w:1},
+         {t:"Eat the rich! ...apologies, Your Honor."},
+         {t:"Which bracket? Asking for me."}]},
+  {q:"My client cannot be billed for 'emotional consulting' — he provides PREMIUM emotional value.",
+   opts:[{t:"His own invoice template disagrees, counsel. Line item 7: 'listening (surge pricing).'",w:1},
+         {t:"Feelings are PRICELESS!"},
+         {t:"Premium is a strong word for a man with a punch card."}]}],
+  asset:"The country club membership. Brett keeps the locker — Brett earned the locker.",},
+ {claims:[
+  {q:"The healing era is PROTECTED self-care. You cannot rush the journey.",
+   opts:[{t:"Six years, Your Honor, and the only documented injury is a smoothie brain-freeze in 2020. We have the smoothie.",w:1},
+         {t:"Journeys are for HOBBITS!"},
+         {t:"I too am healing. From this case."}]},
+  {q:"The seagull DARRYL is an unregistered emotional-support animal. The bond is real.",
+   opts:[{t:"DARRYL appears today for the PLAINTIFF, counsel. He returned one stolen paper. For a fee.",w:1},
+         {t:"Birds aren't real!"},
+         {t:"Objection: that bird is magnificent."}]}],
+  asset:"The beach chair. DARRYL already has the house.",},
+ {claims:[
+  {q:"A vanity plate is SELF-EXPRESSION. DAX1 is, if anything, art.",
+   opts:[{t:"The plate frame says 'You're welcome,' Your Honor. To no one. To traffic.",w:1},
+         {t:"Cars are coffins with radio!"},
+         {t:"It IS a clean plate... dang it."}]},
+  {q:"My client's aura is not on trial. The garage dimmed FOR him.",
+   opts:[{t:"The garage has motion-sensor lights, counsel. He stood still too long admiring himself. We have 40 minutes of footage.",w:1},
+         {t:"Auras are pseudoscience! Mostly!"},
+         {t:"The dark WAS flattering, honestly."}]}],
+  asset:"The parking spot. His craft is now homeless.",},
+ {claims:[
+  {q:"Nine Cabo trips represent a GOOD-FAITH search for the self.",
+   opts:[{t:"He searched the same swim-up bar nine times, Your Honor. The bartender filed a witness statement AND a restraining order.",w:1},
+         {t:"Cabo is a state of MIND!"},
+         {t:"Did he check under the towels?"}]},
+  {q:"The duty-free cologne was for HER. Gifts. Nine gifts.",
+   opts:[{t:"It's 'Homme Supreme No. 1,' counsel. All nine bottles are open. One lives in the car, labeled 'car cologne.'",w:1},
+         {t:"Cologne is a lie invented by Big Smell!"},
+         {t:"What does Homme Supreme smell like? For the record."}]}],
+  asset:"The remaining Cabo miles — reassigned to her girls' trip.",},
+ {claims:[
+  {q:"Living with Doreen was TEMPORARY. Eleven years is temporary on a geological scale.",
+   opts:[{t:"His mail forwarding expired twice, Your Honor. Doreen renewed it. She's in the second row. She brought meatloaf.",w:1},
+         {t:"Rocks don't pay rent!"},
+         {t:"Geologically, this trial is also brief."}]},
+  {q:"The folding chair was a SEAT OF HONOR. It folds. It's versatile.",
+   opts:[{t:"Every Wednesday for eleven years, counsel. Doreen's chair has a cushion with its own cushion. We measured.",w:1},
+         {t:"Chairs are a HIERARCHY, man!"},
+         {t:"I do love a good folding chair, to be fair."}]}],
+  asset:"One (1) permanent seat at the real table. Doreen concurred. Doreen hugged your client.",},
+];
+const JUDGE_WIN=["Sustained. Painfully sustained.","The court finds that... devastating.","Counsel, sit down. Not you, Gary's side."];
+const JUDGE_LOSE=["Overruled. The court is embarrassed for you.","Counsel... no.","The stenographer is deleting that out of mercy."];
+
 /* ---------- state ---------- */
-const state={mode:"menu",lvl:0,wrong:0,throws:0,retries:0,t0:0,timeLeft:0,shake:0,slow:0};
+const state={mode:"menu",lvl:0,wrong:0,throws:0,retries:0,assets:0,exch:0,t0:0,timeLeft:0,shake:0,slow:0};
 let player,target,decoys=[],crowd=[],lawyers=[],carts=[],papersFlying=[],papersFloor=[],parts=[],excuses=[],
     bubble=null,obstacles=[],walkways=[],papersHeld=0,tauntTimer=0,wind={a:0,mag:0,t:0},seagull=null,seagullT=8;
 
@@ -442,7 +569,57 @@ function serve(){
   bubble={txt:LEVELS[state.lvl].served||"...fine.",t:99,who:"target"}; // his ego gets the last word
   for(let i=0;i<40;i++)parts.push({x:target.x,y:target.y,vx:(Math.random()-.5)*420*S,vy:(Math.random()-.8)*420*S,l:1+Math.random(),c:Math.random()<.5?"#fff":"#ffd166",s:5,paper:true});
   const st=document.getElementById("stamp");st.style.display="flex";st.classList.add("show");
-  setTimeout(()=>{st.classList.remove("show");st.style.display="none";next();},1600);
+  setTimeout(()=>{st.classList.remove("show");st.style.display="none";startCourt(state.lvl);},1600);
+}
+
+/* ---------- courtroom ---------- */
+let courtWins=0,courtIdx=0;
+function startCourt(lvl){
+  state.mode="court";courtWins=0;courtIdx=0;
+  document.getElementById("courtTitle").textContent=
+    `IN RE: THE MARRIAGE OF ${LEVELS[lvl].name} (SERVED)`;
+  document.getElementById("courtVerdict").classList.add("hidden");
+  document.getElementById("courtNext").classList.add("hidden");
+  document.getElementById("court").classList.remove("hidden");
+  sfx.gavel();courtClaim(lvl);
+}
+function courtClaim(lvl){
+  const c=COURT[lvl].claims[courtIdx];
+  document.getElementById("courtBrett").textContent=
+    courtIdx===0?"BRETT, ESQ. (appearing for the defense, again, somehow):":"BRETT, ESQ. (undeterred):";
+  document.getElementById("courtClaim").textContent="“"+c.q+"”";
+  document.getElementById("courtMeter").textContent=`EXCHANGE ${courtIdx+1}/2 · JUDGE HARDAWAY'S PATIENCE: ${"▓".repeat(4-courtIdx)}${"░".repeat(courtIdx)}`;
+  const box=document.getElementById("courtOpts");box.innerHTML="";
+  const opts=c.opts.map((o,i)=>({...o,i})).sort(()=>Math.random()-.5);
+  for(const o of opts){
+    const b=document.createElement("button");b.className="copt";b.textContent=o.t;
+    b.onclick=()=>courtAnswer(lvl,o,b);box.appendChild(b);}
+}
+function courtAnswer(lvl,o,btn){
+  for(const b of document.querySelectorAll(".copt"))b.onclick=null;
+  const win=!!o.w;if(win){courtWins++;state.exch++;btn.classList.add("good");sfx.fanfare();}
+  else{btn.classList.add("bad");sfx.wrong();}
+  document.getElementById("courtBrett").textContent="JUDGE HARDAWAY:";
+  document.getElementById("courtClaim").textContent=
+    "“"+(win?JUDGE_WIN:JUDGE_LOSE)[Math.floor(Math.random()*3)]+"”";
+  setTimeout(()=>{courtIdx++;
+    if(courtIdx<2)courtClaim(lvl);else courtVerdict(lvl);},1400);
+}
+function courtVerdict(lvl){
+  document.getElementById("courtOpts").innerHTML="";
+  document.getElementById("courtBrett").textContent="VERDICT:";
+  let v;
+  if(courtWins===2){state.assets++;sfx.fanfare();
+    v="JUDGMENT FOR YOUR CLIENT. Awarded: "+COURT[lvl].asset;}
+  else if(courtWins===1){v="SPLIT DECISION. He keeps the air fryer. Your client keeps everything that matters, including the moral high ground.";}
+  else{v="The court finds everyone annoying. Divorce granted anyway — he keeps the air fryer AND the smug look. Brett bills someone.";sfx.fail();}
+  document.getElementById("courtClaim").textContent="";
+  document.getElementById("courtMeter").textContent="";
+  const cv2=document.getElementById("courtVerdict");cv2.textContent=v;cv2.classList.remove("hidden");
+  const nb=document.getElementById("courtNext");
+  nb.textContent=state.lvl+1>=LEVELS.length?"CLOSE THE CASELOAD":"NEXT CASE";
+  nb.classList.remove("hidden");sfx.gavel();
+  nb.onclick=()=>{document.getElementById("court").classList.add("hidden");next();};
 }
 function next(){
   if(state.lvl+1>=LEVELS.length){
@@ -454,7 +631,7 @@ function next(){
       "Thad got promoted. Your clients pooled for a fruit basket and a 5-star review: "+
       "<i>\"Gary made a difficult time feel efficient.\"</i>";
     document.getElementById("winStats").textContent=
-      `Total: ${tt.toFixed(1)}s · Papers thrown: ${state.throws} · Wrong Chads: ${state.wrong} · Retries: ${state.retries} · Cases closed: ${LEVELS.length}/${LEVELS.length}`;
+      `Total: ${tt.toFixed(1)}s · Papers thrown: ${state.throws} · Wrong Chads: ${state.wrong} · Retries: ${state.retries} · Assets won in court: ${state.assets}/${LEVELS.length} · Exchanges: ${state.exch}/${LEVELS.length*2}`;
     document.getElementById("win").classList.remove("hidden");
     state.mode="done";sfx.fanfare();
     try{localStorage.dpss_unlock="0"}catch(e){} // fresh run next time — they beat it
@@ -606,7 +783,7 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;
 requestAnimationFrame(frame);
 
 /* ---------- flow ---------- */
-function freshRun(from){state.wrong=0;state.throws=0;state.retries=0;state.t0=performance.now();showInter(from);}
+function freshRun(from){state.wrong=0;state.throws=0;state.retries=0;state.assets=0;state.exch=0;state.t0=performance.now();showInter(from);}
 document.getElementById("menuFine").textContent=[
  "No real marriages were harmed in the making of this simulator. The seagull has retained counsel.",
  "Gary is fully licensed, bonded, and emotionally unavailable.",
