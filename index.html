@@ -40,20 +40,22 @@
   <p>You are <b>Gary</b>, freelance process server, 4.9 stars. Ten spouses filed. Ten bros ran.
      Between you and a clean caseload stand a lawyer on retainer, a seagull with no respect
      for the law, and one extremely protective mother.</p>
-  <p><kbd>WASD</kbd>/<kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <b>click / tap</b> throws papers &nbsp;·&nbsp; walk over dropped papers to reclaim them &nbsp;·&nbsp; touch Chad to hand-serve</p>
+  <p><kbd>WASD</kbd>/<kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <b>click / tap</b> throws papers &nbsp;·&nbsp; walk over dropped papers to reclaim them &nbsp;·&nbsp; walk into your man to hand-serve</p>
   <button class="btn" id="startBtn">TAKE THE CASE</button>
   <button class="btn alt hidden" id="contBtn"></button>
-  <p class="fine">No real marriages were harmed in the making of this simulator. Gary is a professional; do not attempt at home. The seagull has retained counsel.</p>
+  <p class="fine" id="menuFine"></p>
 </div>
 
 <div class="overlay hidden" id="inter">
   <h2 id="interTitle"></h2><h1 id="interVenue"></h1><p id="interText"></p>
+  <p id="interGrounds" style="color:#9fb4c7;font-style:italic;font-size:clamp(12.5px,2.3vw,15px)"></p>
   <p id="interNarc" style="font-family:ui-monospace,Menlo,monospace;color:#ff9770;font-weight:700;letter-spacing:1px"></p>
   <button class="btn" id="interBtn">SERVE HIM</button>
 </div>
 
 <div class="overlay hidden" id="fail">
   <h1>⏰ CASE CONTINUED</h1><p id="failText"></p>
+  <p class="fine" id="failTip"></p>
   <button class="btn alt" id="retryBtn">TRY AGAIN</button>
 </div>
 
@@ -101,61 +103,61 @@ const sfx={
  (flashlight cones), seagull (steals floor papers), predictive (Chad flees your
  TRAJECTORY), excuses (Chad throws stunning excuses), decoys (fake Chads). */
 const LEVELS=[
- {venue:"THE SUBURBAN LAWN",name:"BRAD",shirtC:"#e07a5f",intro:"BRAD is watering his hydrangeas. He does not know today is the day. Warm-up serve — he's in flip-flops.",
+ {venue:"THE SUBURBAN LAWN",name:"BRAD",shirtC:"#e07a5f",intro:"BRAD is watering his hydrangeas. He does not know today is the day. Warm-up serve — he's in flip-flops.",grounds:"Filing spouse cites: 42 consecutive weekends of lawn care; he calls the riding mower 'the other woman,' unprompted, often.",
   time:45,tSpeed:150,jukeCd:2.6,detect:170,papers:5,
   narc:"Mildly Self-Absorbed",served:"Ugh, FINE. But I keep the hydrangeas.",
   taunts:["I'm not home!","These are my emotional-support hydrangeas!","New phone, who dis?","This lawn won 'Best Lawn' — MY lawn!"],
   pal:["#3a5f3a","#476f47"],obsC:"#6d8b57",
   layout:[[.3,.25,.12,.08],[.62,.6,.14,.07],[.15,.65,.09,.14],[.72,.18,.08,.16],[.45,.45,.08,.08]]},
- {venue:"GROCERY WORLD",name:"KYLE",shirtC:"#5f9ea0",intro:"KYLE saw your car and fled into the grocery store. Aisles provide cover. He WILL abandon the cart. Kyles always abandon the cart.",
+ {venue:"GROCERY WORLD",name:"KYLE",shirtC:"#5f9ea0",intro:"KYLE saw your car and fled into the grocery store. Aisles provide cover. He WILL abandon the cart. Kyles always abandon the cart.",grounds:"Filing spouse cites: 340 abandoned shopping carts; introduces her as 'my current wife'; winks at the self-checkout.",
   time:50,tSpeed:168,jukeCd:2.1,detect:200,papers:4,
   narc:"Selfie-Adjacent",served:"Whatever. The cashiers will DEFINITELY miss me.",
   taunts:["Cleanup on aisle YOU!","They named a sample tray after me!","These melons are witnesses — MY witnesses!","I'm kind of a big deal in frozen foods!"],
   pal:["#e8e4da","#dcd6c8"],obsC:"#b76e3c",
   layout:[[.2,.15,.06,.5],[.4,.35,.06,.5],[.6,.15,.06,.5],[.8,.35,.06,.45]]},
- {venue:"THE GYM (LEG DAY)",name:"CHET",shirtC:"#8d5fa0",intro:"CHET has been 'living at the gym' per his Instagram. Bad news for him: it's leg day and he's exhausted. Good news for him: pre-workout.",
+ {venue:"THE GYM (LEG DAY)",name:"CHET",shirtC:"#8d5fa0",intro:"CHET has been 'living at the gym' per his Instagram. Bad news for him: it's leg day and he's exhausted. Good news for him: pre-workout.",grounds:"Filing spouse cites: he renamed the garage 'The Chapel'; missed their anniversary, her birthday, and a funeral for 'arm day' (all the same arm).",
   time:50,tSpeed:188,jukeCd:1.6,detect:225,papers:4,
   narc:"Mirror-Curious",served:"Joke's on you — getting served burns 40 calories.",
   taunts:["I'M MID-SET!","The mirrors are here for ME!","Everyone here is watching ME! (they should)","My lawyer is also my trainer!"],
   pal:["#3d3d4d","#46465a"],obsC:"#5c7fa3",
   layout:[[.2,.2,.14,.09],[.55,.14,.09,.2],[.3,.6,.09,.22],[.65,.55,.2,.09],[.47,.4,.07,.07]]},
- {venue:"THE FARMERS MARKET",name:"TANNER",shirtC:"#a0865f",intro:"TANNER is 'supporting local' in a bucket hat. The market is PACKED. Bystanders will absolutely catch a divorce paper with their face — that's a dropped paper and an apology you don't have time for.",
+ {venue:"THE FARMERS MARKET",name:"TANNER",shirtC:"#a0865f",intro:"TANNER is 'supporting local' in a bucket hat. The market is PACKED. Bystanders will absolutely catch a divorce paper with their face — that's a dropped paper and an apology you don't have time for.",grounds:"Filing spouse cites: $11,000 in artisanal honey; self-described 'farm-to-table influencer' (14 followers, 9 are beekeepers, 1 is her).",
   time:52,tSpeed:178,jukeCd:1.9,detect:210,papers:4,crowd:12,
   narc:"Locally Famous (self-declared)",served:"The market will hear about this. They LOVE me here.",
   taunts:["These tomatoes are heirloom, HAVE SOME RESPECT!","I know the beekeeper! We're basically famous!","The honey guy calls me 'the face of the market'!","People come here to see ME, not the turnips!"],
   pal:["#5a6b4a","#657857"],obsC:"#a0713e",
   layout:[[.18,.22,.16,.07],[.55,.18,.16,.07],[.3,.48,.16,.07],[.66,.5,.16,.07],[.2,.72,.16,.07],[.55,.75,.16,.07]]},
- {venue:"THE OFFICE COSTUME PARTY",name:"CHAD",shirtC:"#e07a5f",intro:"Everyone at Chad's office dressed as CHAD for 'Chad Appreciation Day' (he organized it himself). The real Chad RUNS when you get close. The fakes just vibe. Serve the wrong one and it's assault, probably.",
+ {venue:"THE OFFICE COSTUME PARTY",name:"CHAD",shirtC:"#e07a5f",intro:"Everyone at Chad's office dressed as CHAD for 'Chad Appreciation Day' (he organized it himself). The real Chad RUNS when you get close. The fakes just vibe. Serve the wrong one and it's assault, probably.",grounds:"Filing spouse cites: 'Chad Appreciation Day' is scheduled on their wedding anniversary. It has a committee. She is not on it.",
   time:60,tSpeed:182,jukeCd:1.8,detect:185,papers:3,decoys:8,
   narc:"Organized His Own Appreciation Day",served:"You served the ORIGINAL. That's an honor, actually.",
   taunts:["We are ALL Chad! As it should be!","They dressed as me out of LOVE!","Imitation is the sincerest form of ME!","I'm Chad's twin, Thad! (also handsome!)"],
   pal:["#4a4458","#544e64"],obsC:"#7a6ea3",
   layout:[[.25,.3,.1,.08],[.6,.2,.08,.12],[.4,.62,.14,.08],[.75,.6,.08,.14]]},
- {venue:"THE COUNTRY CLUB",name:"PRESTON",shirtC:"#d4b358",intro:"PRESTON's lawyer, BRETT, ESQ., is on the fairway and bills by the tackle. Golf carts have the right of way and know it. Getting hit by either scatters your papers and your dignity.",
+ {venue:"THE COUNTRY CLUB",name:"PRESTON",shirtC:"#d4b358",intro:"PRESTON's lawyer, BRETT, ESQ., is on the fairway and bills by the tackle. Golf carts have the right of way and know it. Getting hit by either scatters your papers and your dignity.",grounds:"Filing spouse cites: he refers to the marriage as 'a merger,' the prenup as 'due diligence,' and date night as 'a stakeholder meeting.'",
   time:55,tSpeed:190,jukeCd:1.7,detect:230,papers:4,lawyers:[{name:"BRETT, ESQ.",speed:172,chaseR:190,shirt:"#38322c"}],carts:3,
   narc:"Club Legend (unverified)",served:"Brett, put 'served with dignity' on my plaque.",
   taunts:["MEMBERS ONLY! I'm the most member!","Brett, HANDLE this! I pay you in EXPOSURE!","There's a plaque with my name coming! Probably!","My handicap is being TOO magnetic!"],
   pal:["#3f6b3f","#4a7a4a"],obsC:"#c9b98a",
   layout:[[.2,.3,.1,.09],[.68,.22,.11,.08],[.45,.55,.09,.09],[.15,.72,.12,.07],[.75,.68,.1,.08]]},
- {venue:"THE BEACH",name:"BLAKE",shirtC:"#5fa07a",intro:"BLAKE is at the beach 'processing' (posing). The WIND has opinions about your paperwork, and a seagull named DARRYL steals any paper left on the sand. Watch the wind arrow.",
+ {venue:"THE BEACH",name:"BLAKE",shirtC:"#5fa07a",intro:"BLAKE is at the beach 'processing' (posing). The WIND has opinions about your paperwork, and a seagull named DARRYL steals any paper left on the sand. Watch the wind arrow.",grounds:"Filing spouse cites: the 'healing era' is six years long; nothing ever happened to him; he journals in third person.",
   time:55,tSpeed:195,jukeCd:1.6,detect:240,papers:5,wind:170,seagull:true,
   narc:"Main Character Era",served:"The sunset saw that. It's embarrassed FOR you.",
   taunts:["I'm in my healing era! The OCEAN is lucky to have me!","DARRYL works for ME now! Everyone does eventually!","This sunset? Scheduled around MY walk!","The tide comes in to SEE me!"],
   pal:["#c9b98a","#d4c497"],obsC:"#e07a5f",
   layout:[[.2,.25,.07,.07],[.5,.18,.07,.07],[.75,.35,.07,.07],[.3,.55,.07,.07],[.62,.62,.07,.07],[.15,.78,.07,.07]]},
- {venue:"PARKING GARAGE, 11 PM",name:"DAX",shirtC:"#6b7fd4",intro:"DAX parked on level 4. It is very dark. Your flashlight finds the pillars; Dax's phone screen gives HIM away when he panics. Listen for the flip-flops.",
+ {venue:"PARKING GARAGE, 11 PM",name:"DAX",shirtC:"#6b7fd4",intro:"DAX parked on level 4. It is very dark. Your flashlight finds the pillars; Dax's phone screen gives HIM away when he panics. Listen for the flip-flops.",grounds:"Filing spouse cites: the vanity plate; the vanity plate's custom frame; he calls parallel parking 'my craft.'",
   time:55,tSpeed:198,jukeCd:1.5,detect:250,papers:3,dark:true,
   narc:"Glows In The Dark (his words)",served:"You only found me because I have a PRESENCE.",
   taunts:["You didn't validate! I never have to!","Even in the DARK you can feel my aura!","My car has a vanity plate: 'DAX1' — the 1 is redundant!","This darkness is just the world dimming for MY glow!"],
   pal:["#26262e","#2b2b34"],obsC:"#4a4a55",
   layout:[[.2,.2,.06,.1],[.45,.2,.06,.1],[.7,.2,.06,.1],[.2,.5,.06,.1],[.45,.5,.06,.1],[.7,.5,.06,.1],[.2,.8,.06,.08],[.45,.8,.06,.08],[.7,.8,.06,.08]]},
- {venue:"GATE 12 — FLIGHT TO CABO",name:"HUNTER",shirtC:"#a05f5f",intro:"HUNTER is at final boarding with a one-way ticket. He's had months to prepare: he predicts where you're GOING, and he throws excuses — get hit by one and you'll stand there stunned, considering it. END THIS.",
+ {venue:"GATE 12 — FLIGHT TO CABO",name:"HUNTER",shirtC:"#a05f5f",intro:"HUNTER is at final boarding with a one-way ticket. He's had months to prepare: he predicts where you're GOING, and he throws excuses — get hit by one and you'll stand there stunned, considering it. END THIS.",grounds:"Filing spouse cites: nine solo trips to Cabo 'to find himself.' He found duty-free cologne. Every time. The same cologne.",
   time:52,tSpeed:205,jukeCd:1.3,detect:265,papers:3,walkways:true,predictive:true,excuses:true,
   narc:"Believes The Plane Is For Him",served:"Cabo will WAIT for me. Cabo has always waited for me.",
   taunts:["I'm in GROUP 1! I AM Group 1!","The pilot follows me on three apps!","This plane leaves when I'M ready!","They're holding MY window seat — the window NEEDS me!"],
   pal:["#50565f","#5a616b"],obsC:"#8b8b96",
   layout:[[.15,.25,.25,.055],[.6,.45,.25,.055],[.3,.68,.25,.055],[.1,.55,.07,.07],[.83,.2,.07,.07]]},
- {venue:"FINAL CASE: HIS MOM'S HOUSE",name:"BRYCE",shirtC:"#e0975f",intro:"BRYCE is hiding at his mother's. DOREEN has been waiting 34 years to defend this boy from consequences, and she is FASTER THAN SHE LOOKS. Bryce predicts your moves. You have two papers. Make them count, Gary.",
+ {venue:"FINAL CASE: HIS MOM'S HOUSE",name:"BRYCE",shirtC:"#e0975f",intro:"BRYCE is hiding at his mother's. DOREEN has been waiting 34 years to defend this boy from consequences, and she is FASTER THAN SHE LOOKS. Bryce predicts your moves. You have two papers. Make them count, Gary.",grounds:"Filing spouse cites: they lived with Doreen 'temporarily' for 11 years; meatloaf every Wednesday; HER seat is the folding chair.",
   time:65,tSpeed:210,jukeCd:1.2,detect:260,papers:2,predictive:true,excuses:true,
   lawyers:[{name:"DOREEN",speed:162,chaseR:240,shirt:"#c76b8f",mom:true}],
   narc:"ACHIEVED FINAL FORM",served:"You didn't serve me. The universe DELIVERED me. Mom, the meatloaf.",
@@ -335,7 +337,7 @@ function update(dt){
         target.excCd=3.5+Math.random()*1.5;
         const d=distP,ex=(player.x-target.x)/d,ey=(player.y-target.y)/d;
         excuses.push({x:target.x,y:target.y,vx:ex*430*S,vy:ey*430*S,live:1.6,
-          txt:["NOT NOW","WE CAN TALK","IT'S MUTUAL-ISH","I'M BUSY"][Math.floor(Math.random()*4)]});sfx.taunt();}}
+          txt:["IT'S MUTUAL-ISH","THERAPY SAYS NO","WE'RE EVOLVING","IT'S A GRAY AREA","NEW ME LOADING"][Math.floor(Math.random()*5)]});sfx.taunt();}}
   }else{
     if(Math.random()<dt*.8)target.dir+=(Math.random()-.5)*2;
     tvx=Math.cos(target.dir)*L.tSpeed*.35*S;tvy=Math.sin(target.dir)*L.tSpeed*.35*S;
@@ -415,7 +417,7 @@ function update(dt){
     if(fast&&Math.hypot(p.x-target.x,p.y-target.y)<target.r+14*S){p.hit=true;serve();return;}
     if(fast)for(const d of decoys)if(!p.spent&&Math.hypot(p.x-d.x,p.y-d.y)<d.r+12*S){p.spent=true;wrongServe(d);}
     if(fast)for(const d of crowd)if(!p.spent&&Math.hypot(p.x-d.x,p.y-d.y)<d.r+10*S){
-      p.vx*=.05;p.vy*=.05;bubble={txt:["Ope—","MY LATTE!","Rude??","I'm calling someone!"][Math.floor(Math.random()*4)],t:1.4,who:"crowd",gx:d.x,gy:d.y};}
+      p.vx*=.05;p.vy*=.05;bubble={txt:["Ope—","MY LATTE!","I have GRAPES in here!","Worst. Market. Day.","I'm calling someone!"][Math.floor(Math.random()*5)],t:1.4,who:"crowd",gx:d.x,gy:d.y};}
     for(const rc of obstacles)if(circleRect(p.x,p.y,8*S,rc)){p.vx*=-.3;p.vy*=-.3;}
     if(Math.hypot(p.vx,p.vy)<50*S&&!p.hit)p.landed=true;
   }
@@ -433,7 +435,7 @@ function update(dt){
 function wrongServe(d){
   if(d.cool)return;d.cool=true;setTimeout(()=>d.cool=false,1500);
   state.wrong++;sfx.wrong();state.shake=6;
-  bubble={txt:["NOT ME, BUDDY!","I'm THAD!","Wrong Chad. Lawsuit.","HR! HR!!"][Math.floor(Math.random()*4)],t:1.8,who:"target"};
+  bubble={txt:["NOT ME, BUDDY!","I'm THAD!","Wrong Chad. Lawsuit.","HR! HR!!","Sir, I'm GLENN. From ACCOUNTS."][Math.floor(Math.random()*5)],t:1.8,who:"target"};
 }
 function serve(){
   state.mode="stamp";state.slow=1.2;state.shake=12;sfx.gavel();
@@ -448,7 +450,8 @@ function next(){
     document.getElementById("winText").innerHTML=
       "Doreen wept. Bryce signed on her coffee table. Ten bros — Brad, Kyle, Chet, Tanner, Chad, Preston, "+
       "Blake, Dax, Hunter, and Bryce — all officially, luxuriously divorced. DARRYL the seagull was awarded "+
-      "the beach house (nobody contested it). Your clients pooled for a fruit basket and a 5-star review: "+
+      "the beach house (nobody contested it). Kyle returned the cart. Brad's hydrangeas are thriving without him. "+
+      "Thad got promoted. Your clients pooled for a fruit basket and a 5-star review: "+
       "<i>\"Gary made a difficult time feel efficient.\"</i>";
     document.getElementById("winStats").textContent=
       `Total: ${tt.toFixed(1)}s · Papers thrown: ${state.throws} · Wrong Chads: ${state.wrong} · Retries: ${state.retries} · Cases closed: ${LEVELS.length}/${LEVELS.length}`;
@@ -464,18 +467,31 @@ function showInter(i){
   document.getElementById("interTitle").textContent=`CASE ${i+1} OF ${LEVELS.length}`;
   document.getElementById("interVenue").textContent=LEVELS[i].venue;
   document.getElementById("interText").textContent=LEVELS[i].intro;
+  document.getElementById("interGrounds").textContent=LEVELS[i].grounds||"";
   document.getElementById("interNarc").textContent=
     (LEVELS[i].name||"TARGET")+" NARCISSISM: "+"▓".repeat(i+1)+"░".repeat(LEVELS.length-i-1)+"  — \""+(LEVELS[i].narc||"?")+"\"";
   document.getElementById("inter").classList.remove("hidden");
   document.getElementById("interBtn").onclick=()=>{document.getElementById("inter").classList.add("hidden");startLevel(i);};
 }
+const MANUAL=[
+ "Field Manual, p.3: If they refuse the papers, drop them at their feet and say the words. The floor counts. The floor has always counted.",
+ "Field Manual, p.7: Kicking the papers is acknowledgment. Tell them kicking is acknowledgment. They hate that.",
+ "Field Manual, p.12: A dodger will accept anything from a man in an elf costume. Christmas comes once a year. Be ready.",
+ "Field Manual, p.19: The pretzel cart is a legitimate business expense. Ask Reg in accounting. Reg knows.",
+ "Field Manual, p.31: Print a limo sign with their name on it. They walk right up. Every time. We don't know why.",
+ "Field Manual, p.44: You cannot serve a man who is technically in the ocean. You can wait. The ocean gets cold.",
+ "Field Manual, p.51: You have 4.9 stars. The missing star respected the hustle but disputed the mileage.",
+];
 function lose(){
   state.mode="fail";state.retries++;sfx.fail();
   document.getElementById("failText").textContent=
     ["He slipped away in a borrowed poncho. The judge sighs and reschedules.",
      "He faked a phone call and moonwalked out. Legally impressive.",
      "He's gone. A single flip-flop remains. The court date is continued.",
-     "Doreen made him a grilled cheese somewhere safe. Regroup, Gary."][Math.floor(Math.random()*4)];
+     "Doreen made him a grilled cheese somewhere safe. Regroup, Gary.",
+     "He dropped and army-crawled behind cover. The manual respects it. The judge will not.",
+     "You hesitated. He sensed weakness and complimented himself to safety."][Math.floor(Math.random()*6)];
+  document.getElementById("failTip").textContent=MANUAL[Math.floor(Math.random()*MANUAL.length)];
   document.getElementById("fail").classList.remove("hidden");
 }
 
@@ -591,6 +607,13 @@ requestAnimationFrame(frame);
 
 /* ---------- flow ---------- */
 function freshRun(from){state.wrong=0;state.throws=0;state.retries=0;state.t0=performance.now();showInter(from);}
+document.getElementById("menuFine").textContent=[
+ "No real marriages were harmed in the making of this simulator. The seagull has retained counsel.",
+ "Gary is fully licensed, bonded, and emotionally unavailable.",
+ "The elf costume is real. The limo sign is real. Ask Reg in accounting.",
+ "DARRYL appears courtesy of himself. DARRYL does not do reshoots.",
+ "All bros are fictional. Any resemblance to a guy you know is statistically unavoidable.",
+][Math.floor(Math.random()*5)];
 const contBtn=document.getElementById("contBtn");
 if(unlockGet()>0){contBtn.classList.remove("hidden");
   contBtn.textContent=`CONTINUE — CASE ${unlockGet()+1}: ${LEVELS[unlockGet()].venue}`;}
