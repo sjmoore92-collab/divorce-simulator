@@ -8,14 +8,14 @@
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#1a1c22;font-family:-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
   #c{display:block;width:100vw;height:100vh}
   .hud{position:fixed;pointer-events:none;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.6)}
-  #topbar{top:10px;left:0;right:0;display:flex;justify-content:space-between;padding:0 16px;font-weight:700;font-size:15px}
+  #topbar{top:10px;left:0;right:0;display:flex;justify-content:space-between;padding:0 16px;font-weight:700;font-size:15px;z-index:5}
   #lvlname{opacity:.9}#timer{font-variant-numeric:tabular-nums}#papers{opacity:.9}
   .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(12,13,18,.86);color:#fff;text-align:center;padding:24px;z-index:10}
-  .overlay h1{font-size:clamp(28px,6vw,54px);margin:0 0 6px;letter-spacing:-1px}
-  .overlay h2{font-size:clamp(18px,3.5vw,26px);margin:0 0 4px;color:#ffd166}
-  .overlay p{max-width:560px;font-size:clamp(14px,2.6vw,17px);line-height:1.5;color:#cfd3dc;margin:10px 0}
+  .overlay h1{font-size:clamp(26px,6vw,52px);margin:0 0 6px;letter-spacing:-1px}
+  .overlay h2{font-size:clamp(17px,3.5vw,25px);margin:0 0 4px;color:#ffd166}
+  .overlay p{max-width:580px;font-size:clamp(13.5px,2.6vw,17px);line-height:1.5;color:#cfd3dc;margin:10px 0}
   .overlay .fine{font-size:11px;color:#767c8a;max-width:480px}
-  .btn{pointer-events:auto;cursor:pointer;margin-top:18px;background:#e63946;border:none;color:#fff;font-size:19px;font-weight:800;padding:14px 38px;border-radius:12px;box-shadow:0 6px 0 #9c1f2a;transition:transform .06s}
+  .btn{pointer-events:auto;cursor:pointer;margin-top:14px;background:#e63946;border:none;color:#fff;font-size:19px;font-weight:800;padding:14px 38px;border-radius:12px;box-shadow:0 6px 0 #9c1f2a;transition:transform .06s}
   .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #9c1f2a}
   .btn.alt{background:#457b9d;box-shadow:0 6px 0 #274c63}
   .btn.alt:active{box-shadow:0 2px 0 #274c63}
@@ -24,7 +24,7 @@
   #stamp.show span{animation:slam .45s cubic-bezier(.2,2.4,.4,1) forwards}
   @keyframes slam{to{transform:rotate(-14deg) scale(1);opacity:1}}
   .hidden{display:none!important}
-  #hint{bottom:14px;left:0;right:0;text-align:center;font-size:12.5px;color:#aab;opacity:.85}
+  #hint{bottom:14px;left:0;right:0;text-align:center;font-size:12.5px;color:#aab;opacity:.9}
   kbd{background:#333a46;border-radius:4px;padding:1px 6px;font-family:inherit}
 </style>
 </head>
@@ -37,12 +37,13 @@
 <div class="overlay" id="menu">
   <h1>⚖️ Divorce Paper Serving Simulator™</h1>
   <h2>"You can't divorce what you can't catch." — Chad</h2>
-  <p>You are <b>Gary</b>, freelance process server, 4.9 stars. Your client's soon-to-be-ex, <b>Chad</b>,
-     has dodged service for eight months. He is fast, slippery, and legally obligated to receive
-     these papers. Touch him, or hit him with a thrown legal document, before the clock runs out.</p>
-  <p><kbd>WASD</kbd>/<kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <b>click / tap</b> to throw papers &nbsp;·&nbsp; walk over dropped papers to pick them up &nbsp;·&nbsp; walk into Chad to hand-serve</p>
+  <p>You are <b>Gary</b>, freelance process server, 4.9 stars. <b>Chad</b> has dodged service for
+     eight months across <b>ten locations</b>, and now he's got backup: a lawyer on retainer,
+     a seagull with no respect for the law, and his mother.</p>
+  <p><kbd>WASD</kbd>/<kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <b>click / tap</b> throws papers &nbsp;·&nbsp; walk over dropped papers to reclaim them &nbsp;·&nbsp; touch Chad to hand-serve</p>
   <button class="btn" id="startBtn">TAKE THE CASE</button>
-  <p class="fine">No real marriages were harmed in the making of this simulator. Papers are 100% recyclable. Gary is a professional; do not attempt at home.</p>
+  <button class="btn alt hidden" id="contBtn"></button>
+  <p class="fine">No real marriages were harmed in the making of this simulator. Gary is a professional; do not attempt at home. The seagull has retained counsel.</p>
 </div>
 
 <div class="overlay hidden" id="inter">
@@ -85,72 +86,133 @@ const sfx={
   pickup(){tone(660,.08,"square",.08);tone(880,.08,"square",.08,.06);},
   taunt(){tone(330,.07,"square",.05);tone(392,.07,"square",.05,.07);},
   wrong(){tone(196,.25,"sawtooth",.12,0,-60);},
+  stun(){tone(240,.3,"sawtooth",.14,0,-140);noise(.1,.18);},
+  squawk(){tone(880,.09,"sawtooth",.12,0,300);tone(760,.12,"sawtooth",.1,.09,-200);},
+  cart(){tone(140,.4,"triangle",.1,0,40);},
   gavel(){noise(.06,.3);tone(90,.14,"sine",.4,0,-30);noise(.06,.25,.16);tone(85,.14,"sine",.35,.16,-30);},
   fanfare(){[523,659,784,1047].forEach((f,i)=>tone(f,.22,"triangle",.12,i*.11));},
   fail(){[392,370,349,330].forEach((f,i)=>tone(f,.3,"triangle",.1,i*.18));}
 };
 
-/* ---------- levels ---------- */
+/* ---------- levels ----------
+ mechanics: crowd (paper-blocking bystanders), carts (moving hazards, stun Gary),
+ lawyers (guard NPCs that chase + stun Gary), wind (curves papers, rotates), dark
+ (flashlight cones), seagull (steals floor papers), predictive (Chad flees your
+ TRAJECTORY), excuses (Chad throws stunning excuses), decoys (fake Chads). */
 const LEVELS=[
  {venue:"THE SUBURBAN LAWN",intro:"Chad is watering his hydrangeas. He does not know today is the day. Warm-up serve — he's in flip-flops.",
-  time:45,tSpeed:150,jukeCd:2.6,detect:170,papers:5,decoys:0,walkways:0,
-  taunts:["I'm not home!","These are my emotional-support hydrangeas!","New phone, who dis?","You have the wrong lawn!"]},
+  time:45,tSpeed:150,jukeCd:2.6,detect:170,papers:5,
+  taunts:["I'm not home!","These are my emotional-support hydrangeas!","New phone, who dis?","You have the wrong lawn!"],
+  pal:["#3a5f3a","#476f47"],obsC:"#6d8b57",
+  layout:[[.3,.25,.12,.08],[.62,.6,.14,.07],[.15,.65,.09,.14],[.72,.18,.08,.16],[.45,.45,.08,.08]]},
  {venue:"GROCERY WORLD",intro:"He fled into the grocery store. Aisles provide cover. He WILL abandon the cart. He always abandons the cart.",
-  time:50,tSpeed:170,jukeCd:2.1,detect:200,papers:4,decoys:0,walkways:0,
-  taunts:["Cleanup on aisle YOU!","I'm just browsing!","Do you have a warrant for produce?!","These melons are witnesses!"]},
- {venue:"THE GYM (LEG DAY)",intro:"Chad has been 'living at the gym' per his Instagram. Bad news for him: it's leg day and he's already exhausted. Good news for him: pre-workout.",
-  time:50,tSpeed:195,jukeCd:1.5,detect:230,papers:4,decoys:0,walkways:0,
-  taunts:["I'M MID-SET!","Spot me instead!","This is a members-only lawsuit!","My lawyer is also my trainer!"]},
+  time:50,tSpeed:168,jukeCd:2.1,detect:200,papers:4,
+  taunts:["Cleanup on aisle YOU!","I'm just browsing!","Do you have a warrant for produce?!","These melons are witnesses!"],
+  pal:["#e8e4da","#dcd6c8"],obsC:"#b76e3c",
+  layout:[[.2,.15,.06,.5],[.4,.35,.06,.5],[.6,.15,.06,.5],[.8,.35,.06,.45]]},
+ {venue:"THE GYM (LEG DAY)",intro:"Chad has been 'living at the gym' per his Instagram. Bad news for him: it's leg day and he's exhausted. Good news for him: pre-workout.",
+  time:50,tSpeed:188,jukeCd:1.6,detect:225,papers:4,
+  taunts:["I'M MID-SET!","Spot me instead!","This is a members-only lawsuit!","My lawyer is also my trainer!"],
+  pal:["#3d3d4d","#46465a"],obsC:"#5c7fa3",
+  layout:[[.2,.2,.14,.09],[.55,.14,.09,.2],[.3,.6,.09,.22],[.65,.55,.2,.09],[.47,.4,.07,.07]]},
+ {venue:"THE FARMERS MARKET",intro:"Chad is 'supporting local' in a bucket hat. The market is PACKED. Bystanders will absolutely catch a divorce paper with their face — that's a dropped paper and an apology you don't have time for.",
+  time:52,tSpeed:178,jukeCd:1.9,detect:210,papers:4,crowd:12,
+  taunts:["These tomatoes are heirloom, HAVE SOME RESPECT!","I know the beekeeper!","Support local! Not lawsuits!","Sir, this is a farmers market!"],
+  pal:["#5a6b4a","#657857"],obsC:"#a0713e",
+  layout:[[.18,.22,.16,.07],[.55,.18,.16,.07],[.3,.48,.16,.07],[.66,.5,.16,.07],[.2,.72,.16,.07],[.55,.75,.16,.07]]},
  {venue:"THE OFFICE COSTUME PARTY",intro:"Everyone at Chad's office dressed as CHAD for 'Chad Appreciation Day' (he organized it himself). The real Chad RUNS when you get close. The fakes just vibe. Serve the wrong one and it's assault, probably.",
-  time:60,tSpeed:180,jukeCd:1.8,detect:180,papers:3,decoys:7,walkways:0,
-  taunts:["We are ALL Chad!","Chad? Never heard of him!","HR is going to hear about this!","I'm Chad's twin, Thad!"]},
- {venue:"GATE 12 — FLIGHT TO CABO",intro:"Final boarding. One-way ticket. If he gets on that plane, the marriage outlives us all. Moving walkways are faster than both of you. END THIS.",
-  time:55,tSpeed:205,jukeCd:1.2,detect:260,papers:3,decoys:0,walkways:3,
-  taunts:["ADIÓS, GARY!","I'm in GROUP 1!","It's a DESTINATION divorce-dodge!","TSA! This man has DOCUMENTS!"]},
+  time:60,tSpeed:182,jukeCd:1.8,detect:185,papers:3,decoys:8,
+  taunts:["We are ALL Chad!","Chad? Never heard of him!","HR is going to hear about this!","I'm Chad's twin, Thad!"],
+  pal:["#4a4458","#544e64"],obsC:"#7a6ea3",
+  layout:[[.25,.3,.1,.08],[.6,.2,.08,.12],[.4,.62,.14,.08],[.75,.6,.08,.14]]},
+ {venue:"THE COUNTRY CLUB",intro:"Chad's lawyer, BRETT, ESQ., is on the fairway and bills by the tackle. Golf carts have the right of way and know it. Getting hit by either scatters your papers and your dignity.",
+  time:55,tSpeed:190,jukeCd:1.7,detect:230,papers:4,lawyers:[{name:"BRETT, ESQ.",speed:172,chaseR:190,shirt:"#38322c"}],carts:3,
+  taunts:["MEMBERS ONLY!","Brett, HANDLE this!","Fore! I mean— FLEE!","My handicap is COMMITMENT!"],
+  pal:["#3f6b3f","#4a7a4a"],obsC:"#c9b98a",
+  layout:[[.2,.3,.1,.09],[.68,.22,.11,.08],[.45,.55,.09,.09],[.15,.72,.12,.07],[.75,.68,.1,.08]]},
+ {venue:"THE BEACH (FLIGHT DIVERTED)",intro:"His flight got diverted, so naturally he's at the beach 'processing.' The WIND has opinions about your paperwork, and a seagull named DARRYL steals any paper left on the sand. Watch the wind arrow.",
+  time:55,tSpeed:195,jukeCd:1.6,detect:240,papers:5,wind:170,seagull:true,
+  taunts:["The ocean has no jurisdiction!","DARRYL! FETCH!","I'm in my healing era!","Tide's coming in on YOUR case!"],
+  pal:["#c9b98a","#d4c497"],obsC:"#e07a5f",
+  layout:[[.2,.25,.07,.07],[.5,.18,.07,.07],[.75,.35,.07,.07],[.3,.55,.07,.07],[.62,.62,.07,.07],[.15,.78,.07,.07]]},
+ {venue:"PARKING GARAGE, 11 PM",intro:"He parked on level 4. It is very dark. Your flashlight finds the pillars; Chad's phone screen gives HIM away when he panics. Listen for the flip-flops.",
+  time:55,tSpeed:198,jukeCd:1.5,detect:250,papers:3,dark:true,
+  taunts:["You didn't validate!","This level is for PERMIT HOLDERS!","My car is RIGHT THERE!","It's giving... stalker!"],
+  pal:["#26262e","#2b2b34"],obsC:"#4a4a55",
+  layout:[[.2,.2,.06,.1],[.45,.2,.06,.1],[.7,.2,.06,.1],[.2,.5,.06,.1],[.45,.5,.06,.1],[.7,.5,.06,.1],[.2,.8,.06,.08],[.45,.8,.06,.08],[.7,.8,.06,.08]]},
+ {venue:"GATE 12 — FLIGHT TO CABO, TAKE 2",intro:"Rebooked. Final boarding. He's had TIME to prepare: he predicts where you're GOING, and he's throwing excuses — get hit by one and you'll stand there stunned, considering it. END THIS.",
+  time:52,tSpeed:205,jukeCd:1.3,detect:265,papers:3,walkways:true,predictive:true,excuses:true,
+  taunts:["ADIÓS, GARY!","I'm in GROUP 1!","It's a DESTINATION divorce-dodge!","TSA! This man has DOCUMENTS!"],
+  pal:["#50565f","#5a616b"],obsC:"#8b8b96",
+  layout:[[.15,.25,.25,.055],[.6,.45,.25,.055],[.3,.68,.25,.055],[.1,.55,.07,.07],[.83,.2,.07,.07]]},
+ {venue:"FINAL CASE: HIS MOM'S HOUSE",intro:"He's hiding at his mother's. DOREEN has been waiting 34 years to defend this boy from consequences, and she is FASTER THAN SHE LOOKS. Chad predicts your moves. You have two papers. Make them count, Gary.",
+  time:65,tSpeed:210,jukeCd:1.2,detect:260,papers:2,predictive:true,excuses:true,
+  lawyers:[{name:"DOREEN",speed:162,chaseR:240,shirt:"#c76b8f",mom:true}],
+  taunts:["MOM! HE'S DOING IT AGAIN!","I'm her BABY!","There's meatloaf, I can't leave!","This house is a LEGAL SANCTUARY!"],
+  pal:["#6b5a4a","#786754"],obsC:"#8a6d4f",
+  layout:[[.1,.35,.35,.04],[.55,.35,.35,.04],[.1,.65,.35,.04],[.55,.65,.35,.04],[.47,.12,.04,.15],[.47,.5,.04,.12],[.25,.85,.1,.06],[.65,.85,.1,.06]]},
 ];
-
-/* obstacle layouts per level (relative coords x,y,w,h in 0..1 of arena) */
-const LAYOUTS=[
- [[.3,.25,.12,.08],[.62,.6,.14,.07],[.15,.65,.09,.14],[.72,.18,.08,.16],[.45,.45,.08,.08]],
- [[.2,.15,.06,.5],[.4,.35,.06,.5],[.6,.15,.06,.5],[.8,.35,.06,.45]],
- [[.2,.2,.14,.09],[.55,.14,.09,.2],[.3,.6,.09,.22],[.65,.55,.2,.09],[.47,.4,.07,.07]],
- [[.25,.3,.1,.08],[.6,.2,.08,.12],[.4,.62,.14,.08],[.75,.6,.08,.14]],
- [[.15,.25,.25,.055],[.6,.45,.25,.055],[.3,.68,.25,.055],[.1,.55,.07,.07],[.83,.2,.07,.07]],
-];
-/* walkway strips for level 5: x,y,w,h, push dir */
 const WALKWAYS=[[.12,.235,.31,.085,1],[.57,.43,.31,.085,-1],[.27,.665,.31,.085,1]];
 
 /* ---------- state ---------- */
-const state={mode:"menu",lvl:0,attempts:0,serves:0,t0:0,totalTime:0,timeLeft:0,shake:0,slow:0};
-let player,target,decoys=[],papersFlying=[],papersFloor=[],parts=[],bubble=null,obstacles=[],walkways=[],papersHeld=0,tauntTimer=0;
+const state={mode:"menu",lvl:0,wrong:0,throws:0,retries:0,t0:0,timeLeft:0,shake:0,slow:0};
+let player,target,decoys=[],crowd=[],lawyers=[],carts=[],papersFlying=[],papersFloor=[],parts=[],excuses=[],
+    bubble=null,obstacles=[],walkways=[],papersHeld=0,tauntTimer=0,wind={a:0,mag:0,t:0},seagull=null,seagullT=8;
 
-function rectsFor(lvl){const pad=40*S;const aw=W-pad*2,ah=H-pad*2;
-  return LAYOUTS[lvl].map(r=>({x:pad+r[0]*aw,y:pad+r[1]*ah,w:r[2]*aw,h:r[3]*ah}));}
-function walkFor(){const pad=40*S;const aw=W-pad*2,ah=H-pad*2;
+function unlockGet(){try{return Math.min(LEVELS.length-1,parseInt(localStorage.dpss_unlock||"0"))}catch(e){return 0}}
+function unlockSet(i){try{localStorage.dpss_unlock=Math.max(unlockGet(),i)}catch(e){}}
+
+function rectsFor(L){const pad=40*S,aw=W-pad*2,ah=H-pad*2;
+  return L.layout.map(r=>({x:pad+r[0]*aw,y:pad+r[1]*ah,w:r[2]*aw,h:r[3]*ah}));}
+function walkFor(){const pad=40*S,aw=W-pad*2,ah=H-pad*2;
   return WALKWAYS.map(r=>({x:pad+r[0]*aw,y:pad+r[1]*ah,w:r[2]*aw,h:r[3]*ah,dir:r[4]}));}
+function freeSpot(fx,fy){ // nudge a spawn out of any obstacle
+  let x=fx*W,y=fy*H;for(let i=0;i<30;i++){let ok=true;
+    for(const rc of obstacles)if(circleRect(x,y,20*S,rc))ok=false;
+    if(ok)break;x=(0.1+0.8*Math.random())*W;y=(0.1+0.8*Math.random())*H;}
+  return{x,y};}
 
 function startLevel(i){
-  state.lvl=i;const L=LEVELS[i];
-  obstacles=rectsFor(i);walkways=L.walkways?walkFor():[];
-  player={x:W*.5,y:H*.88,vx:0,vy:0,r:16*S};
-  target={x:W*.5,y:H*.15,vx:0,vy:0,r:16*S,juke:0,jukeCd:0,dir:Math.random()*6.28,flee:false};
-  decoys=[];for(let d=0;d<L.decoys;d++)decoys.push({x:(0.12+0.76*Math.random())*W,y:(0.12+0.5*Math.random())*H,r:16*S,dir:Math.random()*6.28,t:Math.random()*3});
-  papersFlying=[];papersFloor=[];parts=[];bubble=null;papersHeld=L.papers;
+  state.lvl=i;unlockSet(i);const L=LEVELS[i];
+  obstacles=rectsFor(L);walkways=L.walkways?walkFor():[];
+  let s=freeSpot(.5,.88);player={x:s.x,y:s.y,vx:0,vy:0,r:16*S,stun:0};
+  s=freeSpot(.5,.15);target={x:s.x,y:s.y,vx:0,vy:0,r:16*S,juke:0,jukeCd:1,dir:Math.random()*6.28,flee:false,excCd:3};
+  decoys=[];for(let d=0;d<(L.decoys||0);d++){const p=freeSpot(Math.random(),Math.random()*.6+.1);
+    decoys.push({x:p.x,y:p.y,r:16*S,dir:Math.random()*6.28,t:Math.random()*3});}
+  crowd=[];for(let d=0;d<(L.crowd||0);d++){const p=freeSpot(Math.random(),Math.random());
+    crowd.push({x:p.x,y:p.y,r:15*S,dir:Math.random()*6.28,t:Math.random()*3,
+      shirt:["#7f9c96","#9c8f7f","#7f879c","#948a6e","#6e8894"][d%5]});}
+  lawyers=(L.lawyers||[]).map(cfg=>{const p=freeSpot(.5,.4);
+    return{x:p.x,y:p.y,r:16*S,cfg,orbit:Math.random()*6.28,cool:0};});
+  carts=[];for(let d=0;d<(L.carts||0);d++)carts.push(newCart(d));
+  papersFlying=[];papersFloor=[];parts=[];excuses=[];bubble=null;
+  papersHeld=L.papers;seagull=null;seagullT=6+Math.random()*5;
+  wind={a:Math.random()*6.28,mag:L.wind||0,t:7};
   state.timeLeft=L.time;state.mode="play";state.slow=0;tauntTimer=2;
   hud();
 }
+function newCart(lane){const dir=Math.random()<.5?1:-1;
+  return{y:(0.22+0.56*(lane%3)/2+Math.random()*.06)*H,x:dir>0?-80*S:W+80*S,dir,
+    sp:(190+Math.random()*80)*S,w:64*S,h:34*S,cool:0};}
 function hud(){
-  document.getElementById("lvlname").textContent=`CASE ${state.lvl+1}/5 · ${LEVELS[state.lvl].venue}`;
+  document.getElementById("lvlname").textContent=`CASE ${state.lvl+1}/${LEVELS.length} · ${LEVELS[state.lvl].venue}`;
   document.getElementById("papers").textContent="📄".repeat(Math.max(0,papersHeld))||"—";
-  document.getElementById("hint").textContent = state.lvl===3 ? "The real Chad RUNS. The fakes just vibe." : "";
+  const L=LEVELS[state.lvl];
+  document.getElementById("hint").textContent=
+    L.decoys?"The real Chad RUNS. The fakes just vibe.":
+    L.crowd?"Bystanders block papers. They are not sorry.":
+    L.carts?"Carts and Brett both hit like a subpoena. Keep moving.":
+    L.wind?"Wind curves your throws — watch the arrow up top.":
+    L.dark?"Follow your flashlight. His phone glows when he panics.":
+    L.excuses&&L.lawyers?"Doreen protects. Chad predicts. Two papers. Believe, Gary.":
+    L.excuses?"He throws EXCUSES now. Dodge them or stand there considering.":"";
 }
 
 /* ---------- input ---------- */
 const keys={};
 addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase()))e.preventDefault();});
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-let joy=null,aim={x:0,y:0};
-cv.addEventListener("mousemove",e=>{aim.x=e.clientX*devicePixelRatio;aim.y=e.clientY*devicePixelRatio;});
+let joy=null;
 cv.addEventListener("mousedown",e=>{ac();throwPaper(e.clientX*devicePixelRatio,e.clientY*devicePixelRatio);});
 cv.addEventListener("touchstart",e=>{ac();for(const t of e.changedTouches){
   if(t.clientX<innerWidth*.45&&!joy)joy={id:t.identifier,ox:t.clientX,oy:t.clientY,dx:0,dy:0};
@@ -160,8 +222,8 @@ cv.addEventListener("touchmove",e=>{for(const t of e.changedTouches)if(joy&&t.id
 cv.addEventListener("touchend",e=>{for(const t of e.changedTouches)if(joy&&t.identifier===joy.id)joy=null;},{passive:false});
 
 function throwPaper(px,py){
-  if(state.mode!=="play"||papersHeld<=0)return;
-  papersHeld--;hud();sfx.whoosh();
+  if(state.mode!=="play"||papersHeld<=0||player.stun>0)return;
+  papersHeld--;state.throws++;hud();sfx.whoosh();
   const dx=px-player.x,dy=py-player.y,d=Math.hypot(dx,dy)||1;
   const sp=(620+Math.min(d,420)*0.5)*S;
   papersFlying.push({x:player.x,y:player.y,vx:dx/d*sp,vy:dy/d*sp,rot:0,vr:(Math.random()*10-5),live:2.2});
@@ -177,77 +239,152 @@ function collide(o){
 function los(ax,ay,bx,by){for(const rc of obstacles){for(let t=0;t<=1;t+=.05){
   const x=ax+(bx-ax)*t,y=ay+(by-ay)*t;
   if(x>rc.x&&x<rc.x+rc.w&&y>rc.y&&y<rc.y+rc.h)return false;}}return true;}
+function stunGary(sec,msg){if(player.stun>0)return;player.stun=sec;sfx.stun();state.shake=8;
+  if(msg)bubble={txt:msg,t:1.6,who:"target"};
+  // stunned Gary drops one held paper at his feet
+  if(papersHeld>0){papersHeld--;hud();papersFloor.push({x:player.x+30*S*(Math.random()-.5),y:player.y+24*S,rot:Math.random()*6});}}
 
 /* ---------- update ---------- */
 function update(dt){
   const L=LEVELS[state.lvl];
-  const ts=state.slow>0?0.25:1;state.slow=Math.max(0,state.slow-dt);dt*=ts;
-  if(state.mode!=="play"){return;}
+  const ts=state.slow>0?0.25:1;state.slow=Math.max(0,state.slow-dt);
+  state.shake=Math.max(0,state.shake-dt*30);
+  // particles always animate (so the serve confetti moves behind the stamp)
+  for(const q of parts){q.l-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=60*dt;}
+  parts=parts.filter(q=>q.l>0);
+  if(state.mode!=="play")return;
+  dt*=ts;
   state.timeLeft-=dt;
   document.getElementById("timer").textContent="⏱ "+Math.max(0,state.timeLeft).toFixed(1)+"s";
   if(state.timeLeft<=0){lose();return;}
 
+  // wind
+  if(L.wind){wind.t-=dt;if(wind.t<=0){wind.t=6+Math.random()*3;wind.a=Math.random()*6.28;}
+    if(Math.random()<dt*24)parts.push({x:Math.random()*W,y:Math.random()*H,
+      vx:Math.cos(wind.a)*wind.mag*S*1.6,vy:Math.sin(wind.a)*wind.mag*S*1.6,l:.5,c:"rgba(255,255,255,.5)",s:2});}
+
   // player
+  player.stun=Math.max(0,player.stun-dt);
   let ix=0,iy=0;
-  if(keys.w||keys.arrowup)iy-=1;if(keys.s||keys.arrowdown)iy+=1;
-  if(keys.a||keys.arrowleft)ix-=1;if(keys.d||keys.arrowright)ix+=1;
-  if(joy){const m=Math.hypot(joy.dx,joy.dy);if(m>8){ix=joy.dx/m;iy=joy.dy/m;}}
-  const im=Math.hypot(ix,iy)||1;
-  const pSpeed=250*S;
+  if(player.stun<=0){
+    if(keys.w||keys.arrowup)iy-=1;if(keys.s||keys.arrowdown)iy+=1;
+    if(keys.a||keys.arrowleft)ix-=1;if(keys.d||keys.arrowright)ix+=1;
+    if(joy){const m=Math.hypot(joy.dx,joy.dy);if(m>8){ix=joy.dx/m;iy=joy.dy/m;}}}
+  const im=Math.hypot(ix,iy)||1,pSpeed=252*S;
   player.vx=ix/im*pSpeed;player.vy=iy/im*pSpeed;
   for(const wk of walkways)if(circleRect(player.x,player.y,player.r,wk))player.vx+=wk.dir*260*S;
   player.x+=player.vx*dt;player.y+=player.vy*dt;collide(player);
   if((ix||iy)&&Math.random()<dt*8)parts.push({x:player.x,y:player.y+player.r*.8,vx:(Math.random()-.5)*20,vy:10,l:.5,c:"#888",s:3});
 
   // target AI
+  const px=L.predictive?player.x+player.vx*.55:player.x,
+        py=L.predictive?player.y+player.vy*.55:player.y;
   const distP=Math.hypot(target.x-player.x,target.y-player.y);
   const sees=distP<L.detect*S*(los(target.x,target.y,player.x,player.y)?1:.45);
   target.flee=sees||distP<120*S;
   target.jukeCd-=dt;
   let tvx,tvy;
   if(target.flee){
-    let fx=(target.x-player.x)/distP,fy=(target.y-player.y)/distP;
-    // wall steer: bias away from walls when close
+    const dd=Math.hypot(target.x-px,target.y-py)||1;
+    let fx=(target.x-px)/dd,fy=(target.y-py)/dd;
     if(target.x<90*S)fx+=1;if(target.x>W-90*S)fx-=1;
     if(target.y<90*S)fy+=1;if(target.y>H-90*S)fy-=1;
-    if(target.jukeCd<=0&&distP<200*S){ // panic juke: dash perpendicular
+    if(target.jukeCd<=0&&distP<200*S){
       target.jukeCd=L.jukeCd;const side=Math.random()<.5?1:-1;
       target.juke=.35;target.jdx=-fy*side;target.jdy=fx*side;}
     if(target.juke>0){target.juke-=dt;fx=target.jdx;fy=target.jdy;}
     const fm=Math.hypot(fx,fy)||1;
     tvx=fx/fm*L.tSpeed*S;tvy=fy/fm*L.tSpeed*S;
     target.dir=Math.atan2(tvy,tvx);
-  }else{ // wander
+    // excuses: hurled objections that stun Gary
+    if(L.excuses){target.excCd-=dt;
+      if(target.excCd<=0&&distP>140*S&&distP<520*S&&los(target.x,target.y,player.x,player.y)){
+        target.excCd=3.5+Math.random()*1.5;
+        const d=distP,ex=(player.x-target.x)/d,ey=(player.y-target.y)/d;
+        excuses.push({x:target.x,y:target.y,vx:ex*430*S,vy:ey*430*S,live:1.6,
+          txt:["NOT NOW","WE CAN TALK","IT'S MUTUAL-ISH","I'M BUSY"][Math.floor(Math.random()*4)]});sfx.taunt();}}
+  }else{
     if(Math.random()<dt*.8)target.dir+=(Math.random()-.5)*2;
     tvx=Math.cos(target.dir)*L.tSpeed*.35*S;tvy=Math.sin(target.dir)*L.tSpeed*.35*S;
   }
   for(const wk of walkways)if(circleRect(target.x,target.y,target.r,wk))tvx+=wk.dir*260*S;
   target.x+=tvx*dt;target.y+=tvy*dt;
   const preX=target.x,preY=target.y;collide(target);
-  if(Math.abs(preX-target.x)>.5||Math.abs(preY-target.y)>.5)target.dir+=2.5; // bounced off something → turn
+  if(Math.abs(preX-target.x)>.5||Math.abs(preY-target.y)>.5)target.dir+=2.5;
 
   // taunts
   tauntTimer-=dt;
   if(tauntTimer<=0&&target.flee){tauntTimer=3.5+Math.random()*2;
-    bubble={txt:L.taunts[Math.floor(Math.random()*L.taunts.length)],t:2.2};sfx.taunt();}
+    bubble={txt:L.taunts[Math.floor(Math.random()*L.taunts.length)],t:2.2,who:"target"};sfx.taunt();}
   if(bubble){bubble.t-=dt;if(bubble.t<=0)bubble=null;}
 
-  // decoys (level 4)
+  // decoys + crowd wander
   for(const d of decoys){d.t-=dt;if(d.t<=0){d.t=1.5+Math.random()*2;d.dir+=(Math.random()-.5)*3;}
     d.x+=Math.cos(d.dir)*55*S*dt;d.y+=Math.sin(d.dir)*55*S*dt;collide(d);}
+  for(const d of crowd){d.t-=dt;if(d.t<=0){d.t=2+Math.random()*2;d.dir+=(Math.random()-.5)*3;}
+    d.x+=Math.cos(d.dir)*38*S*dt;d.y+=Math.sin(d.dir)*38*S*dt;collide(d);}
 
-  // hand-serve
+  // lawyers / Doreen: orbit Chad, chase Gary in range
+  for(const lw of lawyers){lw.cool=Math.max(0,lw.cool-dt);
+    const dG=Math.hypot(lw.x-player.x,lw.y-player.y);
+    if(dG<lw.cfg.chaseR*S){
+      const ex=(player.x-lw.x)/dG,ey=(player.y-lw.y)/dG;
+      lw.x+=ex*lw.cfg.speed*S*dt;lw.y+=ey*lw.cfg.speed*S*dt;
+    }else{lw.orbit+=dt*.9;
+      const gx=target.x+Math.cos(lw.orbit)*85*S,gy=target.y+Math.sin(lw.orbit)*85*S;
+      const dd=Math.hypot(gx-lw.x,gy-lw.y)||1;
+      lw.x+=(gx-lw.x)/dd*Math.min(lw.cfg.speed*S,dd/dt||0)*dt;lw.y+=(gy-lw.y)/dd*Math.min(lw.cfg.speed*S,dd/dt||0)*dt;}
+    collide(lw);
+    if(lw.cool<=0&&Math.hypot(lw.x-player.x,lw.y-player.y)<lw.r+player.r+2*S){
+      lw.cool=2.2;stunGary(1.2,lw.cfg.mom?["NOT MY BABY!","HE'S SENSITIVE!","GET A JOB, GARY!"][Math.floor(Math.random()*3)]
+                                          :["OBJECTION!","TALK TO MY OFFICE!","BILLABLE HOURS!"][Math.floor(Math.random()*3)]);}}
+
+  // golf carts
+  for(const ct of carts){ct.x+=ct.dir*ct.sp*dt;ct.cool=Math.max(0,ct.cool-dt);
+    if(ct.dir>0&&ct.x>W+90*S)Object.assign(ct,newCart(Math.floor(Math.random()*3)));
+    if(ct.dir<0&&ct.x<-90*S)Object.assign(ct,newCart(Math.floor(Math.random()*3)));
+    if(ct.cool<=0&&circleRect(player.x,player.y,player.r,{x:ct.x-ct.w/2,y:ct.y-ct.h/2,w:ct.w,h:ct.h})){
+      ct.cool=1.5;sfx.cart();stunGary(1.0,"CART!");player.x+=ct.dir*40*S;}}
+
+  // seagull DARRYL
+  if(L.seagull){
+    if(!seagull){seagullT-=dt;
+      if(seagullT<=0&&papersFloor.length>0){
+        const tgt=papersFloor[Math.floor(Math.random()*papersFloor.length)];
+        seagull={x:Math.random()<.5?-40*S:W+40*S,y:Math.random()*H*.4,tgt,phase:"in"};sfx.squawk();}}
+    else{
+      if(seagull.phase==="in"){
+        if(!papersFloor.includes(seagull.tgt)){seagull.phase="out";}
+        else{const dx=seagull.tgt.x-seagull.x,dy=seagull.tgt.y-seagull.y,d=Math.hypot(dx,dy)||1;
+          seagull.x+=dx/d*300*S*dt;seagull.y+=dy/d*300*S*dt;
+          if(d<14*S){papersFloor=papersFloor.filter(p=>p!==seagull.tgt);seagull.phase="out";sfx.squawk();
+            bubble={txt:"MINE.",t:1.2,who:"gull",gx:seagull.x,gy:seagull.y};}}}
+      else{seagull.x+=(seagull.x<W/2?-1:1)*320*S*dt;seagull.y-=120*S*dt;
+        if(seagull.x<-60*S||seagull.x>W+60*S){seagull=null;seagullT=8+Math.random()*6;}}}}
+
+  // excuses in flight
+  for(const ex of excuses){ex.live-=dt;ex.x+=ex.vx*dt;ex.y+=ex.vy*dt;
+    if(Math.hypot(ex.x-player.x,ex.y-player.y)<player.r+14*S){ex.live=0;stunGary(0.9,null);
+      bubble={txt:ex.txt+"...huh.",t:1.2,who:"me"};}}
+  excuses=excuses.filter(ex=>ex.live>0);
+
+  // hand-serve + wrong-serve
   if(distP<player.r+target.r+4*S){serve();return;}
-  for(const d of decoys)if(Math.hypot(d.x-player.x,d.y-player.y)<player.r+d.r+2*S){wrongServe(d);}
+  for(const d of decoys)if(Math.hypot(d.x-player.x,d.y-player.y)<player.r+d.r+2*S)wrongServe(d);
 
   // flying papers
   for(const p of papersFlying){
-    p.live-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
-    p.vx*=Math.pow(.12,dt);p.vy*=Math.pow(.12,dt); // paper drag
-    if(Math.hypot(p.x-target.x,p.y-target.y)<target.r+14*S&&Math.hypot(p.vx,p.vy)>60*S){p.hit=true;serve();return;}
-    for(const d of decoys)if(!p.spent&&Math.hypot(p.x-d.x,p.y-d.y)<d.r+12*S&&Math.hypot(p.vx,p.vy)>60*S){p.spent=true;wrongServe(d);}
+    p.live-=dt;
+    if(L.wind){p.vx+=Math.cos(wind.a)*wind.mag*S*dt*3.2;p.vy+=Math.sin(wind.a)*wind.mag*S*dt*3.2;}
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vr*dt;
+    p.vx*=Math.pow(.12,dt);p.vy*=Math.pow(.12,dt);
+    const fast=Math.hypot(p.vx,p.vy)>60*S;
+    if(fast&&Math.hypot(p.x-target.x,p.y-target.y)<target.r+14*S){p.hit=true;serve();return;}
+    if(fast)for(const d of decoys)if(!p.spent&&Math.hypot(p.x-d.x,p.y-d.y)<d.r+12*S){p.spent=true;wrongServe(d);}
+    if(fast)for(const d of crowd)if(!p.spent&&Math.hypot(p.x-d.x,p.y-d.y)<d.r+10*S){
+      p.vx*=.05;p.vy*=.05;bubble={txt:["Ope—","MY LATTE!","Rude??","I'm calling someone!"][Math.floor(Math.random()*4)],t:1.4,who:"crowd",gx:d.x,gy:d.y};}
     for(const rc of obstacles)if(circleRect(p.x,p.y,8*S,rc)){p.vx*=-.3;p.vy*=-.3;}
-    if(Math.hypot(p.vx,p.vy)<50*S&&!p.hit){p.landed=true;}
+    if(Math.hypot(p.vx,p.vy)<50*S&&!p.hit)p.landed=true;
   }
   papersFlying=papersFlying.filter(p=>{
     if(p.landed){papersFloor.push({x:p.x,y:p.y,rot:p.rot});return false;}
@@ -257,64 +394,66 @@ function update(dt){
   papersFloor=papersFloor.filter(p=>{
     if(Math.hypot(p.x-player.x,p.y-player.y)<player.r+12*S){papersHeld++;hud();sfx.pickup();return false;}
     return true;});
-
-  // particles
-  for(const q of parts){q.l-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=60*dt;}
-  parts=parts.filter(q=>q.l>0);
-  state.shake=Math.max(0,state.shake-dt*30);
+  // out of ammo AND nothing to reclaim AND can't catch up? that's what retries are for
 }
 
 function wrongServe(d){
   if(d.cool)return;d.cool=true;setTimeout(()=>d.cool=false,1500);
-  state.attempts++;sfx.wrong();state.shake=6;
-  bubble={txt:["NOT ME, BUDDY!","I'm THAD!","Wrong Chad. Lawsuit.","HR! HR!!"][Math.floor(Math.random()*4)],t:1.8};
+  state.wrong++;sfx.wrong();state.shake=6;
+  bubble={txt:["NOT ME, BUDDY!","I'm THAD!","Wrong Chad. Lawsuit.","HR! HR!!"][Math.floor(Math.random()*4)],t:1.8,who:"target"};
 }
 function serve(){
-  state.mode="stamp";state.serves++;state.slow=1.2;state.shake=12;sfx.gavel();
+  state.mode="stamp";state.slow=1.2;state.shake=12;sfx.gavel();
   for(let i=0;i<40;i++)parts.push({x:target.x,y:target.y,vx:(Math.random()-.5)*420*S,vy:(Math.random()-.8)*420*S,l:1+Math.random(),c:Math.random()<.5?"#fff":"#ffd166",s:5,paper:true});
   const st=document.getElementById("stamp");st.style.display="flex";st.classList.add("show");
   setTimeout(()=>{st.classList.remove("show");st.style.display="none";next();},1600);
 }
 function next(){
   if(state.lvl+1>=LEVELS.length){
-    state.totalTime=(performance.now()-state.t0)/1000;
+    const tt=(performance.now()-state.t0)/1000;
     document.getElementById("winText").innerHTML=
-      "Chad was served at the gate, sobbing gently into his neck pillow. The marriage is legally dissolving. "+
-      "Your client sent you a fruit basket and a 5-star review: <i>\"Gary made a difficult time feel efficient.\"</i>";
+      "Doreen wept. Chad signed. DARRYL the seagull was awarded the beach house (nobody contested it). "+
+      "Your client sent a fruit basket and a 5-star review: <i>\"Gary made a difficult time feel efficient.\"</i>";
     document.getElementById("winStats").textContent=
-      `Total time: ${state.totalTime.toFixed(1)}s · Wrong Chads assaulted: ${state.attempts} · Cases closed: 5/5`;
+      `Total: ${tt.toFixed(1)}s · Papers thrown: ${state.throws} · Wrong Chads: ${state.wrong} · Retries: ${state.retries} · Cases closed: ${LEVELS.length}/${LEVELS.length}`;
     document.getElementById("win").classList.remove("hidden");
-    state.mode="done";sfx.fanfare();return;
+    state.mode="done";sfx.fanfare();
+    try{localStorage.dpss_unlock="0"}catch(e){} // fresh run next time — they beat it
+    return;
   }
   showInter(state.lvl+1);
 }
 function showInter(i){
   state.mode="inter";
-  document.getElementById("interTitle").textContent=`CASE ${i+1} OF 5`;
+  document.getElementById("interTitle").textContent=`CASE ${i+1} OF ${LEVELS.length}`;
   document.getElementById("interVenue").textContent=LEVELS[i].venue;
   document.getElementById("interText").textContent=LEVELS[i].intro;
   document.getElementById("inter").classList.remove("hidden");
   document.getElementById("interBtn").onclick=()=>{document.getElementById("inter").classList.add("hidden");startLevel(i);};
 }
 function lose(){
-  state.mode="fail";sfx.fail();
+  state.mode="fail";state.retries++;sfx.fail();
   document.getElementById("failText").textContent=
     ["Chad slipped away in a borrowed poncho. The judge sighs and reschedules.",
      "He faked a phone call and moonwalked out. Legally impressive.",
-     "Chad is gone. A single flip-flop remains. The court date is continued."][Math.floor(Math.random()*3)];
+     "Chad is gone. A single flip-flop remains. The court date is continued.",
+     "Doreen made him a grilled cheese somewhere safe. Regroup, Gary."][Math.floor(Math.random()*4)];
   document.getElementById("fail").classList.remove("hidden");
 }
 
 /* ---------- drawing ---------- */
 function person(x,y,r,opts){
-  const {shirt="#4361ee",skin="#f2c9a0",panic=false,me=false,hawaiian=false}=opts||{};
+  const {shirt="#4361ee",skin="#f2c9a0",panic=false,me=false,hawaiian=false,suit=false,mom=false,stun=0}=opts||{};
   ctx.save();ctx.translate(x,y);
   ctx.fillStyle="rgba(0,0,0,.25)";ctx.beginPath();ctx.ellipse(0,r*1.05,r*.9,r*.35,0,0,7);ctx.fill();
   ctx.fillStyle=shirt;ctx.beginPath();ctx.ellipse(0,r*.25,r*.85,r*.95,0,0,7);ctx.fill();
   if(hawaiian){ctx.fillStyle="#fff";for(let i=0;i<5;i++){ctx.beginPath();
     ctx.arc((Math.sin(i*2.4)*.5)*r,(i*.35-.4)*r,r*.11,0,7);ctx.fill();}}
+  if(suit){ctx.fillStyle="#fff";ctx.beginPath();ctx.moveTo(0,-r*.15);ctx.lineTo(-r*.18,r*.35);ctx.lineTo(r*.18,r*.35);ctx.fill();
+    ctx.fillStyle="#7a2b2b";ctx.fillRect(-r*.06,-r*.1,r*.12,r*.5);}
   ctx.fillStyle=skin;ctx.beginPath();ctx.arc(0,-r*.55,r*.62,0,7);ctx.fill();
-  ctx.fillStyle="#2b2118";ctx.beginPath();ctx.arc(0,-r*.72,r*.55,Math.PI,0);ctx.fill();
+  ctx.fillStyle=mom?"#d9d3c8":"#2b2118";ctx.beginPath();ctx.arc(0,-r*.72,r*.55,Math.PI,0);ctx.fill();
+  if(mom){ctx.beginPath();ctx.arc(-r*.5,-r*.6,r*.2,0,7);ctx.arc(r*.5,-r*.6,r*.2,0,7);ctx.fill();}
   if(panic){ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(-r*.2,-r*.55,r*.16,0,7);ctx.arc(r*.2,-r*.55,r*.16,0,7);ctx.fill();
     ctx.fillStyle="#000";ctx.beginPath();ctx.arc(-r*.2,-r*.55,r*.07,0,7);ctx.arc(r*.2,-r*.55,r*.07,0,7);ctx.fill();
     ctx.strokeStyle="#000";ctx.lineWidth=r*.08;ctx.beginPath();ctx.arc(0,-r*.3,r*.14,0,Math.PI);ctx.stroke();}
@@ -322,12 +461,23 @@ function person(x,y,r,opts){
   if(me){ctx.fillStyle="#fff";ctx.fillRect(-r*.45,r*.05,r*.9,r*.5);
     ctx.strokeStyle="#bbb";ctx.lineWidth=1;for(let i=1;i<4;i++){ctx.beginPath();
       ctx.moveTo(-r*.35,r*.05+i*r*.12);ctx.lineTo(r*.35,r*.05+i*r*.12);ctx.stroke();}}
+  if(stun>0){ctx.strokeStyle="#ffd166";ctx.lineWidth=2;
+    for(let i=0;i<3;i++){const a=performance.now()/200+i*2.1;
+      ctx.beginPath();ctx.arc(Math.cos(a)*r*.7,-r*1.15+Math.sin(a)*r*.15,r*.09,0,7);ctx.stroke();}}
   ctx.restore();
 }
+function bubbleAt(bx,by,txt){
+  ctx.font=`700 ${15*S}px sans-serif`;const tw=ctx.measureText(txt).width;
+  bx=Math.max(tw/2+12*S,Math.min(W-tw/2-12*S,bx));
+  ctx.fillStyle="rgba(255,255,255,.95)";
+  ctx.beginPath();ctx.roundRect(bx-tw/2-10*S,by-16*S,tw+20*S,26*S,8*S);ctx.fill();
+  ctx.fillStyle="#111";ctx.textAlign="center";ctx.fillText(txt,bx,by+2*S);
+}
 function draw(){
+  const L=LEVELS[state.lvl]||LEVELS[0];
   ctx.save();
   if(state.shake>0)ctx.translate((Math.random()-.5)*state.shake*S,(Math.random()-.5)*state.shake*S);
-  const pal=[["#3a5f3a","#476f47"],["#e8e4da","#dcd6c8"],["#3d3d4d","#46465a"],["#4a4458","#544e64"],["#50565f","#5a616b"]][state.lvl]||["#333","#3a3a3a"];
+  const pal=L.pal;
   ctx.fillStyle=pal[0];ctx.fillRect(0,0,W,H);
   ctx.fillStyle=pal[1];
   for(let x=0;x<W;x+=90*S)for(let y=0;y<H;y+=90*S)if(((x+y)/(90*S))%2<1)ctx.fillRect(x,y,90*S,90*S);
@@ -336,28 +486,58 @@ function draw(){
     for(let i=-1;i<12;i++){const lx=wk.x+((i+off)/10)*wk.w;if(lx>wk.x&&lx<wk.x+wk.w-6*S)ctx.fillRect(lx,wk.y+3*S,5*S,wk.h-6*S);}
     ctx.strokeStyle="#666";ctx.strokeRect(wk.x,wk.y,wk.w,wk.h);}
   for(const rc of obstacles){ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(rc.x+4*S,rc.y+5*S,rc.w,rc.h);
-    ctx.fillStyle=["#6d8b57","#b76e3c","#5c7fa3","#7a6ea3","#8b8b96"][state.lvl]||"#777";
-    ctx.fillRect(rc.x,rc.y,rc.w,rc.h);ctx.strokeStyle="rgba(255,255,255,.25)";ctx.strokeRect(rc.x,rc.y,rc.w,rc.h);}
+    ctx.fillStyle=L.obsC;ctx.fillRect(rc.x,rc.y,rc.w,rc.h);
+    ctx.strokeStyle="rgba(255,255,255,.25)";ctx.strokeRect(rc.x,rc.y,rc.w,rc.h);}
   for(const p of papersFloor){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);
     ctx.fillStyle="#fff";ctx.fillRect(-9*S,-12*S,18*S,24*S);ctx.strokeStyle="#ccc";ctx.strokeRect(-9*S,-12*S,18*S,24*S);ctx.restore();}
   for(const q of parts){ctx.globalAlpha=Math.max(0,Math.min(1,q.l));
     if(q.paper){ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.l*7);ctx.fillStyle=q.c;ctx.fillRect(-q.s*S,-q.s*1.3*S,q.s*2*S,q.s*2.6*S);ctx.restore();}
     else{ctx.fillStyle=q.c;ctx.fillRect(q.x,q.y,q.s*S,q.s*S);}ctx.globalAlpha=1;}
+  for(const ct of carts){ctx.save();ctx.translate(ct.x,ct.y);
+    ctx.fillStyle="rgba(0,0,0,.25)";ctx.beginPath();ctx.ellipse(0,ct.h*.62,ct.w*.55,ct.h*.25,0,0,7);ctx.fill();
+    ctx.fillStyle="#f5f5f0";ctx.beginPath();ctx.roundRect(-ct.w/2,-ct.h/2,ct.w,ct.h,8*S);ctx.fill();
+    ctx.fillStyle="#3d7a4a";ctx.fillRect(-ct.w/2,-ct.h/2,ct.w,ct.h*.35);
+    ctx.fillStyle="#222";[[-.32,.5],[.32,.5]].forEach(w=>{ctx.beginPath();ctx.arc(w[0]*ct.w,w[1]*ct.h,ct.h*.22,0,7);ctx.fill();});
+    ctx.restore();}
+  for(const d of crowd)person(d.x,d.y,d.r,{shirt:d.shirt});
   for(const d of decoys)person(d.x,d.y,d.r,{shirt:"#e07a5f",hawaiian:true});
+  for(const lw of lawyers)person(lw.x,lw.y,lw.r,{shirt:lw.cfg.shirt,suit:!lw.cfg.mom,mom:lw.cfg.mom});
   if(state.mode==="play"||state.mode==="stamp"){
     person(target.x,target.y,target.r,{shirt:"#e07a5f",panic:target.flee,hawaiian:true});
-    person(player.x,player.y,player.r,{shirt:"#2f3e56",me:true});}
+    person(player.x,player.y,player.r,{shirt:"#2f3e56",me:true,stun:player.stun});}
   for(const p of papersFlying){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);
     ctx.fillStyle="#fff";ctx.fillRect(-9*S,-12*S,18*S,24*S);
     ctx.strokeStyle="#aaa";ctx.strokeRect(-9*S,-12*S,18*S,24*S);
     ctx.fillStyle="#e63946";ctx.font=`${8*S}px sans-serif`;ctx.textAlign="center";ctx.fillText("DIVORCE",0,0);ctx.restore();}
-  if(bubble&&(state.mode==="play")){
-    ctx.font=`700 ${15*S}px sans-serif`;const tw=ctx.measureText(bubble.txt).width;
-    const bx=Math.max(tw/2+12*S,Math.min(W-tw/2-12*S,target.x)),by=target.y-target.r*2.4;
-    ctx.fillStyle="rgba(255,255,255,.95)";
-    ctx.beginPath();ctx.roundRect(bx-tw/2-10*S,by-16*S,tw+20*S,26*S,8*S);ctx.fill();
-    ctx.beginPath();ctx.moveTo(bx-6*S,by+10*S);ctx.lineTo(bx+6*S,by+10*S);ctx.lineTo(target.x,target.y-target.r*1.4);ctx.fill();
-    ctx.fillStyle="#111";ctx.textAlign="center";ctx.fillText(bubble.txt,bx,by+2*S);}
+  for(const ex of excuses){ctx.save();ctx.translate(ex.x,ex.y);ctx.rotate(ex.live*9);
+    ctx.fillStyle="#ffe9a8";ctx.fillRect(-16*S,-9*S,32*S,18*S);ctx.strokeStyle="#c9a94f";ctx.strokeRect(-16*S,-9*S,32*S,18*S);
+    ctx.fillStyle="#6b4f00";ctx.font=`700 ${6.5*S}px sans-serif`;ctx.textAlign="center";ctx.fillText(ex.txt,0,2*S);ctx.restore();}
+  if(seagull){ctx.save();ctx.translate(seagull.x,seagull.y);
+    ctx.fillStyle="#eee";ctx.beginPath();ctx.ellipse(0,0,14*S,7*S,0,0,7);ctx.fill();
+    ctx.strokeStyle="#eee";ctx.lineWidth=3*S;const fl=Math.sin(performance.now()/80)*8*S;
+    ctx.beginPath();ctx.moveTo(-4*S,0);ctx.quadraticCurveTo(-16*S,-10*S-fl,-26*S,-4*S);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(4*S,0);ctx.quadraticCurveTo(16*S,-10*S-fl,26*S,-4*S);ctx.stroke();
+    ctx.fillStyle="#e8a33d";ctx.beginPath();ctx.moveTo(14*S,0);ctx.lineTo(22*S,2*S);ctx.lineTo(14*S,4*S);ctx.fill();ctx.restore();}
+  // darkness + flashlight (garage)
+  if(L.dark&&(state.mode==="play"||state.mode==="stamp")){
+    ctx.fillStyle="rgba(8,8,14,.88)";
+    ctx.beginPath();ctx.rect(0,0,W,H);
+    ctx.arc(player.x,player.y,185*S,0,7,true);
+    if(target.flee)ctx.arc(target.x,target.y,80*S,0,7,true);
+    ctx.fill("evenodd");
+    ctx.strokeStyle="rgba(255,255,220,.08)";ctx.lineWidth=30*S;
+    ctx.beginPath();ctx.arc(player.x,player.y,185*S,0,7);ctx.stroke();
+    if(target.flee){ctx.fillStyle="rgba(140,180,255,.1)";ctx.beginPath();ctx.arc(target.x,target.y,80*S,0,7);ctx.fill();}}
+  // wind arrow
+  if(L.wind&&state.mode==="play"){ctx.save();ctx.translate(W/2,54*S);ctx.rotate(wind.a);
+    ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=4*S;
+    ctx.beginPath();ctx.moveTo(-22*S,0);ctx.lineTo(18*S,0);ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.85)";ctx.beginPath();ctx.moveTo(28*S,0);ctx.lineTo(12*S,-8*S);ctx.lineTo(12*S,8*S);ctx.fill();ctx.restore();}
+  // speech bubbles
+  if(bubble&&state.mode==="play"){
+    if(bubble.who==="target")bubbleAt(target.x,target.y-target.r*2.4,bubble.txt);
+    else if(bubble.who==="me")bubbleAt(player.x,player.y-player.r*2.4,bubble.txt);
+    else if(bubble.gx!==undefined)bubbleAt(bubble.gx,bubble.gy-30*S,bubble.txt);}
   if(joy){ctx.globalAlpha=.3;ctx.fillStyle="#fff";
     ctx.beginPath();ctx.arc(joy.ox*devicePixelRatio,joy.oy*devicePixelRatio,46*S,0,7);ctx.fill();
     ctx.beginPath();ctx.arc((joy.ox+Math.max(-40,Math.min(40,joy.dx)))*devicePixelRatio,(joy.oy+Math.max(-40,Math.min(40,joy.dy)))*devicePixelRatio,22*S,0,7);ctx.fill();ctx.globalAlpha=1;}
@@ -371,14 +551,16 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;
   requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 
-/* ---------- flow buttons ---------- */
+/* ---------- flow ---------- */
+function freshRun(from){state.wrong=0;state.throws=0;state.retries=0;state.t0=performance.now();showInter(from);}
+const contBtn=document.getElementById("contBtn");
+if(unlockGet()>0){contBtn.classList.remove("hidden");
+  contBtn.textContent=`CONTINUE — CASE ${unlockGet()+1}: ${LEVELS[unlockGet()].venue}`;}
 document.getElementById("startBtn").onclick=()=>{ac();
-  document.getElementById("menu").classList.add("hidden");
-  state.attempts=0;state.serves=0;state.t0=performance.now();
-  showInter(0);};
+  document.getElementById("menu").classList.add("hidden");freshRun(0);};
+contBtn.onclick=()=>{ac();document.getElementById("menu").classList.add("hidden");freshRun(unlockGet());};
 document.getElementById("retryBtn").onclick=()=>{document.getElementById("fail").classList.add("hidden");startLevel(state.lvl);};
-document.getElementById("againBtn").onclick=()=>{document.getElementById("win").classList.add("hidden");
-  state.attempts=0;state.serves=0;state.t0=performance.now();showInter(0);};
+document.getElementById("againBtn").onclick=()=>{document.getElementById("win").classList.add("hidden");freshRun(0);};
 </script>
 </body>
 </html>
