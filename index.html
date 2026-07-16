@@ -187,7 +187,7 @@ function startLevel(i){
   state.lvl=i;unlockSet(i);const L=LEVELS[i];
   obstacles=rectsFor(L);walkways=L.walkways?walkFor():[];
   let s=freeSpot(.5,.88);player={x:s.x,y:s.y,vx:0,vy:0,r:16*S,stun:0};
-  s=freeSpot(.5,.15);target={x:s.x,y:s.y,vx:0,vy:0,r:16*S,juke:0,jukeCd:1,dir:Math.random()*6.28,flee:false,excCd:3};
+  s=freeSpot(.5,.15);target={x:s.x,y:s.y,vx:0,vy:0,r:16*S,juke:0,jukeCd:1,dir:Math.random()*6.28,flee:false,excCd:3,burst:0,burstCd:0};
   decoys=[];for(let d=0;d<(L.decoys||0);d++){const p=freeSpot(Math.random(),Math.random()*.6+.1);
     decoys.push({x:p.x,y:p.y,r:16*S,dir:Math.random()*6.28,t:Math.random()*3});}
   crowd=[];for(let d=0;d<(L.crowd||0);d++){const p=freeSpot(Math.random(),Math.random());
@@ -296,16 +296,38 @@ function update(dt){
   target.jukeCd-=dt;
   let tvx,tvy;
   if(target.flee){
-    const dd=Math.hypot(target.x-px,target.y-py)||1;
-    let fx=(target.x-px)/dd,fy=(target.y-py)/dd;
-    if(target.x<90*S)fx+=1;if(target.x>W-90*S)fx-=1;
-    if(target.y<90*S)fy+=1;if(target.y>H-90*S)fy-=1;
+    // Route-scored escape (2026-07-16): plain away-from-Gary fled INTO corners and made
+    // corner-camping the dominant strategy. Now he samples 16 headings and scores each by
+    // distance gained from (predicted) Gary, wall/obstacle hate, and open space two steps
+    // ahead — so a cornered bro slides ALONG the wall and slips past you.
+    const escScore=a=>{
+      const nx=target.x+Math.cos(a)*70*S,ny=target.y+Math.sin(a)*70*S;
+      let sc=Math.hypot(nx-px,ny-py);
+      if(nx<45*S||nx>W-45*S)sc-=260*S;if(ny<45*S||ny>H-45*S)sc-=260*S;
+      for(const rc of obstacles)if(circleRect(nx,ny,target.r*1.3,rc))sc-=320*S;
+      const gx=target.x+Math.cos(a)*160*S,gy=target.y+Math.sin(a)*160*S;
+      if(gx<25*S||gx>W-25*S||gy<25*S||gy>H-25*S)sc-=130*S;
+      for(const rc of obstacles)if(circleRect(gx,gy,target.r,rc))sc-=90*S;
+      return sc+Math.random()*18*S;};
+    let bestA=0,bestSc=-1e9;
+    for(let k=0;k<16;k++){const a=k/16*6.2832,sc=escScore(a);if(sc>bestSc){bestSc=sc;bestA=a;}}
+    let fx=Math.cos(bestA),fy=Math.sin(bestA);
     if(target.jukeCd<=0&&distP<200*S){
-      target.jukeCd=L.jukeCd;const side=Math.random()<.5?1:-1;
-      target.juke=.35;target.jdx=-fy*side;target.jdy=fx*side;}
+      target.jukeCd=L.jukeCd;
+      const a1=bestA+1.5708,a2=bestA-1.5708;          // juke toward the roomier side
+      const ja=escScore(a1)>escScore(a2)?a1:a2;
+      target.juke=.35;target.jdx=Math.cos(ja);target.jdy=Math.sin(ja);}
     if(target.juke>0){target.juke-=dt;fx=target.jdx;fy=target.jdy;}
+    // cornered adrenaline: pinned near a wall with Gary closing → short 1.55x speed burst
+    target.burstCd=Math.max(0,target.burstCd-dt);
+    const nearWall=target.x<80*S||target.x>W-80*S||target.y<80*S||target.y>H-80*S;
+    if(target.burstCd<=0&&nearWall&&distP<110*S){
+      target.burst=.5;target.burstCd=3.5;
+      bubble={txt:["NOPE!","ADRENALINE!","CARDIO, BABY!","not TODAY!"][Math.floor(Math.random()*4)],t:1.2,who:"target"};}
+    target.burst=Math.max(0,target.burst-dt);
+    const spd=L.tSpeed*(target.burst>0?1.55:1);
     const fm=Math.hypot(fx,fy)||1;
-    tvx=fx/fm*L.tSpeed*S;tvy=fy/fm*L.tSpeed*S;
+    tvx=fx/fm*spd*S;tvy=fy/fm*spd*S;
     target.dir=Math.atan2(tvy,tvx);
     // excuses: hurled objections that stun Gary
     if(L.excuses){target.excCd-=dt;
